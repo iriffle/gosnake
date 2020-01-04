@@ -28,7 +28,7 @@ func (m *GameMap) InitializeMap() {
 			if x == 0 || x == m.Width-1 || y == 0 || y == m.Height-1 {
 				m.Tiles[x][y] = &Tile{true, true, "ColorBrown", "ColorDarkGreen"}
 			} else {
-				m.Tiles[x][y] = &Tile{false, false, "ColorBrown", "ColorDarkGreen"}
+				m.Tiles[x][y] = &Tile{false, false, "ColorDarkGreen", "ColorWhite"}
 			}
 		}
 	}

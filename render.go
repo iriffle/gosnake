@@ -2,10 +2,11 @@ package main
 
 import (
 	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/views"
 	"github.com/mattn/go-runewidth"
 )
 
-func renderStr(s tcell.Screen, x int, y int, style tcell.Style, str string) {
+func renderStr(v *views.ViewPort, x int, y int, style tcell.Style, str string) {
 	for _, c := range str {
 		var comb []rune
 		w := runewidth.RuneWidth(c)
@@ -14,12 +15,12 @@ func renderStr(s tcell.Screen, x int, y int, style tcell.Style, str string) {
 			c = ' '
 			w = 1
 		}
-		s.SetContent(x, y, c, comb, style)
+		v.SetContent(x, y, c, comb, style)
 		x += w
 	}
 }
 
-func renderMap(s tcell.Screen, gameMap *GameMap) {
+func renderMap(g *Game, gameMap *GameMap) {
 	// Render the game map. If a tile is blocked and blocks sight, draw a '#', if it is not blocked, and does not block
 	// sight, draw a '.'
 	for x := 0; x < gameMap.Width; x++ {
@@ -28,23 +29,24 @@ func renderMap(s tcell.Screen, gameMap *GameMap) {
 			//fgStyle := tcell.GetColor(gameMap.Tiles[x][y].FGColor)
 			tileStyle := tcell.StyleDefault.Foreground(fgColor)
 			if gameMap.Tiles[x][y].Blocked == true {
-				renderStr(s, x, y, tileStyle, "#")
+				renderStr(g.lview, x, y, tileStyle, "▒")
 			} else {
-				renderStr(s, x, y, tileStyle, string(' '))
+				renderStr(g.lview, x, y, tileStyle, string(' '))
 			}
 		}
 	}
 }
 
-func renderEntities(s tcell.Screen, entities []*Entity) {
+func renderEntities(g *Game, entities []*Entity) {
 	// Draw every Entity present in the game. This gets called on each iteration of the game loop.
 	for _, e := range entities {
-		renderStr(s, e.x, e.y, e.style, e.char)
+		renderStr(g.lview, e.x, e.y, e.style, e.char)
 	}
 }
 
-func renderAll(s tcell.Screen, style tcell.Style, gameMap *GameMap, entities []*Entity) {
+func renderAll(g *Game, style tcell.Style, gameMap *GameMap, entities []*Entity) {
 	// Convenience function to render all entities, followed by rendering the game map
-	renderMap(s, gameMap)
-	renderEntities(s, entities)
+	renderMap(g, gameMap)
+	renderEntities(g, entities)
+	renderStr(g.sview, 0, 0, style, "Test")
 }

@@ -4,6 +4,10 @@ import (
 	"github.com/gdamore/tcell"
 )
 
+type Coord struct {
+	x, y int
+}
+
 type Entity struct {
 	name  string
 	char  string
@@ -11,6 +15,7 @@ type Entity struct {
 	style tcell.Style
 	x     int
 	y     int
+	pos   []Coord
 }
 
 func (e *Entity) Move(dx int, dy int) {
