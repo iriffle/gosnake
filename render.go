@@ -8,6 +8,7 @@ import (
 
 func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*Player) { //entities []*Entity) {
 	// Convenience function to render all entities, followed by rendering the game map
+	g.lview.Clear()
 	renderMap(g, gameMap)
 	renderPlayers(g, players)
 	//renderEntities(g, entities)
@@ -47,13 +48,13 @@ func renderStr(v *views.ViewPort, x int, y int, style tcell.Style, str string) {
 }
 
 func renderSnake(v *views.ViewPort, p *Player) {
-	for _, c := range p.snake.moving.object.char {
+	for _, c := range p.Object.char {
 		var comb []rune
 		comb = []rune{c}
 		c = ' '
 
-		for _, pos := range p.snake.pos {
-			v.SetContent(pos.x, pos.y, c, comb, p.snake.moving.object.style)
+		for _, pos := range p.pos {
+			v.SetContent(pos.x, pos.y, c, comb, p.Object.style)
 		}
 	}
 
