@@ -6,18 +6,13 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-func renderStr(v *views.ViewPort, x int, y int, style tcell.Style, str string) {
-	for _, c := range str {
-		var comb []rune
-		w := runewidth.RuneWidth(c)
-		if w == 0 {
-			comb = []rune{c}
-			c = ' '
-			w = 1
-		}
-		v.SetContent(x, y, c, comb, style)
-		x += w
-	}
+func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*Player) { //entities []*Entity) {
+	// Convenience function to render all entities, followed by rendering the game map
+	renderMap(g, gameMap)
+	renderPlayers(g, players)
+	//renderEntities(g, entities)
+	//renderSnake(g.lview, player)
+	renderStr(g.sview, 0, 0, style, "Snake")
 }
 
 func renderMap(g *Game, gameMap *GameMap) {
@@ -37,16 +32,36 @@ func renderMap(g *Game, gameMap *GameMap) {
 	}
 }
 
-func renderEntities(g *Game, entities []*Entity) {
-	// Draw every Entity present in the game. This gets called on each iteration of the game loop.
-	for _, e := range entities {
-		renderStr(g.lview, e.x, e.y, e.style, e.char)
+func renderStr(v *views.ViewPort, x int, y int, style tcell.Style, str string) {
+	for _, c := range str {
+		var comb []rune
+		w := runewidth.RuneWidth(c)
+		if w == 0 {
+			comb = []rune{c}
+			c = ' '
+			w = 1
+		}
+		v.SetContent(x, y, c, comb, style)
+		x += w
 	}
 }
 
-func renderAll(g *Game, style tcell.Style, gameMap *GameMap, entities []*Entity) {
-	// Convenience function to render all entities, followed by rendering the game map
-	renderMap(g, gameMap)
-	renderEntities(g, entities)
-	renderStr(g.sview, 0, 0, style, "Test")
+func renderSnake(v *views.ViewPort, p *Player) {
+	for _, c := range p.snake.moving.object.char {
+		var comb []rune
+		comb = []rune{c}
+		c = ' '
+
+		for _, pos := range p.snake.pos {
+			v.SetContent(pos.x, pos.y, c, comb, p.snake.moving.object.style)
+		}
+	}
+
+}
+
+func renderPlayers(g *Game, players []*Player) {
+	// Draw every Entity present in the game. This gets called on each iteration of the game loop.
+	for _, player := range players {
+		renderSnake(g.lview, player)
+	}
 }

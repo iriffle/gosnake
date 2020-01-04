@@ -13,18 +13,17 @@ const (
 )
 
 var (
-	entities []*Entity
-	player   *Entity
 	gameMap  *GameMap
 	dx, dy   int
 	defStyle tcell.Style
 )
 
 type Game struct {
-	screen tcell.Screen
-	lview  *views.ViewPort
-	sview  *views.ViewPort
-	sbar   *views.TextBar
+	screen  tcell.Screen
+	lview   *views.ViewPort
+	sview   *views.ViewPort
+	sbar    *views.TextBar
+	players []*Player
 }
 
 func (g *Game) Init() error {
@@ -57,33 +56,48 @@ func (g *Game) Init() error {
 
 	gameMap.InitializeMap()
 
-	player = &Entity{
-		name: "player",
-		char: "ʘ",
+	p1Object := &Object{
+		char:  "O",
+		layer: 1,
 		style: tcell.StyleDefault.
 			Background(bgColor).
 			Foreground(tcell.ColorWhite),
-		layer: 1,
-		x:     MapWidth / 2,
-		y:     MapHeight / 2,
-		pos:   []Coord{Coord{MapWidth / 2, MapHeight / 2}},
+		x: MapWidth / 2,
+		y: MapHeight / 2,
 	}
 
-	entities = append(entities, player)
+	p1Moving := &Moving{
+		object:    p1Object,
+		direction: "left",
+		speed:     1,
+	}
+
+	p1Snake := &Snake{
+		moving: p1Moving,
+		pos:    []Coord{Coord{MapWidth / 2, MapHeight / 2}},
+	}
+
+	p1 := &Player{
+		snake: p1Snake,
+		name:  "Player1",
+		score: 0,
+	}
+
+	g.players = append(g.players, p1)
 
 	return nil
 }
 
 func (g *Game) Run() error {
 
-	renderAll(g, defStyle, gameMap, entities)
+	renderAll(g, defStyle, gameMap, g.players)
 
 	for {
 		g.screen.Show()
 
-		handleInput(g.screen, player)
+		handleInput(g.screen, g.players[0])
 
-		renderAll(g, defStyle, gameMap, entities)
+		renderAll(g, defStyle, gameMap, g.players)
 	}
 	return nil
 }
