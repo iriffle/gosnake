@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gosnake/entities"
 	"strconv"
 
 	"github.com/gdamore/tcell"
@@ -8,12 +9,12 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*player, bits []*bit) {
+func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*entities.Player, bits []*entities.Bit) {
 	g.lview.Clear()
 	renderMap(g, gameMap)
 	renderBits(g, bits)
 	renderPlayers(g, players)
-	score := strconv.Itoa(players[0].score)
+	score := strconv.Itoa(players[0].Score)
 	renderStr(g.sview, 0, 0, style, ("Score: " + score))
 }
 
@@ -51,24 +52,24 @@ func renderRune(v *views.ViewPort, x, y int, style tcell.Style, char rune) {
 	v.SetContent(x, y, char, comb, style)
 }
 
-func renderEntity(v *views.ViewPort, p *player) {
-	for _, pos := range p.pos {
+func renderEntity(v *views.ViewPort, p *entities.Player) {
+	for _, pos := range p.Pos {
 		var comb []rune
 		comb = nil
-		c := pos.char
-		v.SetContent(pos.x, pos.y, c, comb, pos.style)
+		c := pos.Char
+		v.SetContent(pos.X, pos.Y, c, comb, pos.Style)
 	}
 
 }
 
-func renderPlayers(g *Game, players []*player) {
+func renderPlayers(g *Game, players []*entities.Player) {
 	for _, player := range players {
 		renderEntity(g.lview, player)
 	}
 }
 
-func renderBits(g *Game, bits []*bit) {
+func renderBits(g *Game, bits []*entities.Bit) {
 	for _, bit := range bits {
-		renderRune(g.lview, bit.x, bit.y, bit.style, bit.char)
+		renderRune(g.lview, bit.X, bit.Y, bit.Style, bit.Char)
 	}
 }

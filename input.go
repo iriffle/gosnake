@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gosnake/entities"
 	"os"
 
 	"github.com/gdamore/tcell"
@@ -10,7 +11,7 @@ var (
 	dx, dy int
 )
 
-func handleInput(s tcell.Screen, p *player) {
+func handleInput(s tcell.Screen, p *entities.Player) {
 	ev := s.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
@@ -35,7 +36,7 @@ func handleInput(s tcell.Screen, p *player) {
 			s.Fini()
 			os.Exit(0)
 		}
-		if !gameMap.IsBlocked(p.pos[0].x+dx, p.pos[0].y+dy) {
+		if !gameMap.IsBlocked(p.Pos[0].X+dx, p.Pos[0].Y+dy) {
 			p.MoveEntity(dx, dy)
 		}
 	}

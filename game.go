@@ -1,6 +1,8 @@
 package main
 
 import (
+	"gosnake/entities"
+
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/encoding"
 	"github.com/gdamore/tcell/views"
@@ -27,8 +29,8 @@ type Game struct {
 	lview   *views.ViewPort
 	sview   *views.ViewPort
 	sbar    *views.TextBar
-	players []*player
-	bits    []*bit
+	players []*entities.Player
+	bits    []*entities.Bit
 }
 
 func (g *Game) Init() error {
@@ -68,20 +70,21 @@ func (g *Game) Init() error {
 	pStyle := tcell.StyleDefault.
 		Background(bgColor).
 		Foreground(tcell.ColorWhite)
-	p1 := NewPlayer(x, y, 0, 'O', "Player1", pStyle)
+	p1 := entities.NewPlayer(x, y, 0, 'O', "Player1", pStyle)
 	g.players = append(g.players, &p1)
 
 	// b := NewBit(10, 10, 10, '*', pStyle)
 	// g.bits = append(g.bits, &b)
-	SetBit(g, 10, '*', tcell.StyleDefault.
+	b := entities.SetBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, '*', tcell.StyleDefault.
 		Background(tcell.ColorDarkSlateBlue).
 		Foreground(tcell.ColorWhite))
-
+	g.bits = append(g.bits, &b)
 	return nil
 }
 
 func (g *Game) Run() error {
 
+	var b entities.Bit
 	renderAll(g, defStyle, gameMap, g.players, g.bits)
 
 	for {
@@ -91,19 +94,19 @@ func (g *Game) Run() error {
 
 		for a, p := range g.players {
 			for i, bit := range g.bits {
-				if p.pos[0].x == bit.x && p.pos[0].y == bit.y {
-					p.score += bit.points
+				if p.Pos[0].X == bit.X && p.Pos[0].Y == bit.Y {
+					p.Score += bit.Points
 					g.players[a].AddSegment('O', tcell.StyleDefault.
 						Background(tcell.ColorDarkSlateBlue).
 						Foreground(tcell.ColorWhite))
 					g.bits = append(g.bits[:i], g.bits[i+1:]...)
-					SetBit(g, 10, '*', tcell.StyleDefault.
+					b = entities.SetBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, '*', tcell.StyleDefault.
 						Background(tcell.ColorDarkSlateBlue).
 						Foreground(tcell.ColorWhite))
 				}
 			}
 		}
-
+		g.bits = append(g.bits, &b)
 		renderAll(g, defStyle, gameMap, g.players, g.bits)
 	}
 	return nil
