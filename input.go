@@ -6,7 +6,11 @@ import (
 	"github.com/gdamore/tcell"
 )
 
-func handleInput(s tcell.Screen, p *Player) {
+var (
+	dx, dy int
+)
+
+func handleInput(s tcell.Screen, p *player) {
 	ev := s.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
@@ -22,19 +26,17 @@ func handleInput(s tcell.Screen, p *Player) {
 		if ev.Rune() == 'd' {
 			dx, dy = 1, 0
 		}
-		// if ev.Rune() == 'r' {
-		// 	add := p.pos{
-		// 		x: (p.Object.x - 1),
-		// 		y: (p.Object.y - 1),
-		// 	}
-		// 	p.pos = append(p.pos, p.Object.x)
-		// }
+		if ev.Rune() == 'r' {
+			p.AddSegment('O', tcell.StyleDefault.
+				Background(tcell.ColorDarkSlateBlue).
+				Foreground(tcell.ColorWhite))
+		}
 		if ev.Key() == tcell.KeyF12 {
 			s.Fini()
 			os.Exit(0)
 		}
-		if !gameMap.IsBlocked(p.Object.x+dx, p.Object.y+dy) {
-			p.MovePlayer(dx, dy)
+		if !gameMap.IsBlocked(p.pos[0].x+dx, p.pos[0].y+dy) {
+			p.MoveEntity(dx, dy)
 		}
 	}
 }

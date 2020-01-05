@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/encoding"
 	"github.com/gdamore/tcell/views"
 )
 
@@ -10,11 +11,14 @@ const (
 	WindowSizeY = 35
 	MapWidth    = WindowSizeX
 	MapHeight   = WindowSizeY
+	MapStartX   = 0
+	MapStartY   = 1
+	SViewStartX = 0
+	SViewStartY = 0
 )
 
 var (
 	gameMap  *GameMap
-	dx, dy   int
 	defStyle tcell.Style
 )
 
@@ -23,10 +27,12 @@ type Game struct {
 	lview   *views.ViewPort
 	sview   *views.ViewPort
 	sbar    *views.TextBar
-	players []*Player
+	players []*player
+	bits    []*bit
 }
 
 func (g *Game) Init() error {
+	encoding.Register()
 
 	if screen, err := tcell.NewScreen(); err != nil {
 		return err
@@ -44,8 +50,9 @@ func (g *Game) Init() error {
 
 	// Prepare screen
 	g.screen.EnableMouse()
-	g.lview = views.NewViewPort(g.screen, 0, 1, -1, -1)
-	g.sview = views.NewViewPort(g.screen, 0, 0, -1, 1)
+	g.screen.Clear()
+	g.lview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
+	g.sview = views.NewViewPort(g.screen, SViewStartX, SViewStartY, -1, 1)
 	g.sbar = views.NewTextBar()
 	g.sbar.SetView(g.sview)
 
@@ -56,33 +63,48 @@ func (g *Game) Init() error {
 
 	gameMap.InitializeMap()
 
-	p1 := NewPlayer(
-		tcell.StyleDefault.
-			Background(bgColor).
-			Foreground(tcell.ColorWhite),
-		MapWidth/2,
-		MapHeight/2,
-		1,
-		"0",
-		"left",
-		"left",
-		"Player1")
+	x := MapWidth / 2
+	y := MapHeight / 2
+	pStyle := tcell.StyleDefault.
+		Background(bgColor).
+		Foreground(tcell.ColorWhite)
+	p1 := NewPlayer(x, y, 0, 'O', "Player1", pStyle)
+	g.players = append(g.players, &p1)
 
-	g.players = append(g.players, p1)
+	// b := NewBit(10, 10, 10, '*', pStyle)
+	// g.bits = append(g.bits, &b)
+	SetBit(g, 10, '*', tcell.StyleDefault.
+		Background(tcell.ColorDarkSlateBlue).
+		Foreground(tcell.ColorWhite))
 
 	return nil
 }
 
 func (g *Game) Run() error {
 
-	renderAll(g, defStyle, gameMap, g.players)
+	renderAll(g, defStyle, gameMap, g.players, g.bits)
 
 	for {
 		g.screen.Show()
 
 		handleInput(g.screen, g.players[0])
 
-		renderAll(g, defStyle, gameMap, g.players)
+		for a, p := range g.players {
+			for i, bit := range g.bits {
+				if p.pos[0].x == bit.x && p.pos[0].y == bit.y {
+					p.score += bit.points
+					g.players[a].AddSegment('O', tcell.StyleDefault.
+						Background(tcell.ColorDarkSlateBlue).
+						Foreground(tcell.ColorWhite))
+					g.bits = append(g.bits[:i], g.bits[i+1:]...)
+					SetBit(g, 10, '*', tcell.StyleDefault.
+						Background(tcell.ColorDarkSlateBlue).
+						Foreground(tcell.ColorWhite))
+				}
+			}
+		}
+
+		renderAll(g, defStyle, gameMap, g.players, g.bits)
 	}
 	return nil
 }
