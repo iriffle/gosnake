@@ -1,43 +1,42 @@
 package main
 
 import (
-	"gosnake/entities"
 	"os"
 
 	"github.com/gdamore/tcell"
 )
 
-var (
-	dx, dy int
-)
+// var (
+// 	dx, dy int
+// )
 
-func handleInput(s tcell.Screen, p *entities.Player) {
+func handleInput(s tcell.Screen, p *Player) {
 	ev := s.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
-		if ev.Rune() == 'w' {
-			dx, dy = 0, -1
-		}
-		if ev.Rune() == 's' {
-			dx, dy = 0, 1
-		}
-		if ev.Rune() == 'a' {
-			dx, dy = -1, 0
-		}
-		if ev.Rune() == 'd' {
-			dx, dy = 1, 0
-		}
-		if ev.Rune() == 'r' {
-			p.AddSegment('O', tcell.StyleDefault.
-				Background(tcell.ColorDarkSlateBlue).
-				Foreground(tcell.ColorWhite))
-		}
 		if ev.Key() == tcell.KeyF12 {
 			s.Fini()
 			os.Exit(0)
 		}
-		if !gameMap.IsBlocked(p.Pos[0].X+dx, p.Pos[0].Y+dy) {
-			p.MoveEntity(dx, dy)
+		switch ev.Rune() {
+		case 'w':
+			if !(p.direction == 2) {
+				p.direction = 1
+			}
+		case 's':
+			if !(p.direction == 1) {
+				p.direction = 2
+			}
+		case 'a':
+			if !(p.direction == 4) {
+				p.direction = 3
+			}
+		case 'd':
+			if !(p.direction == 3) {
+				p.direction = 4
+			}
+		case 'r':
+			p.AddSegment(p.pos[0].char, p.pos[0].style)
 		}
 	}
 }

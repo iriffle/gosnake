@@ -1,10 +1,12 @@
 package main
 
+import (
+	"github.com/gdamore/tcell"
+)
+
 type Tile struct {
-	Blocked     bool
-	BlocksSight bool
-	BGColor     string
-	FGColor     string
+	blocked bool
+	style   tcell.Style
 }
 
 type GameMap struct {
@@ -13,7 +15,7 @@ type GameMap struct {
 	Tiles  [][]*Tile
 }
 
-func (m *GameMap) InitializeMap() {
+func (m *GameMap) InitializeMap(defStyle tcell.Style) {
 	// Set up a map where all the border (edge) Tiles are walls (block movement, and sight)
 	// This is just a test method, we will build maps more dynamically in the future.
 	m.Tiles = make([][]*Tile, m.Width)
@@ -24,9 +26,9 @@ func (m *GameMap) InitializeMap() {
 	for x := 0; x < m.Width; x++ {
 		for y := 0; y < m.Height; y++ {
 			if x == 0 || x == m.Width-1 || y == 0 || y == m.Height-1 {
-				m.Tiles[x][y] = &Tile{true, true, "ColorGreen", "ColorDarkGreen"}
+				m.Tiles[x][y] = &Tile{true, defStyle}
 			} else {
-				m.Tiles[x][y] = &Tile{false, false, "ColorGreen", "ColorWhite"}
+				m.Tiles[x][y] = &Tile{false, defStyle}
 			}
 		}
 	}
@@ -34,7 +36,7 @@ func (m *GameMap) InitializeMap() {
 
 func (m *GameMap) IsBlocked(x int, y int) bool {
 	// Check to see if the provided coordinates contain a blocked tile
-	if m.Tiles[x][y].Blocked {
+	if m.Tiles[x][y].blocked {
 		return true
 	} else {
 		return false

@@ -1,18 +1,15 @@
 package main
 
 import (
-	"gosnake/entities"
-
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/encoding"
 	"github.com/gdamore/tcell/views"
+	"time"
 )
 
 const (
-	WindowSizeX = 100
-	WindowSizeY = 35
-	MapWidth    = WindowSizeX
-	MapHeight   = WindowSizeY
+	MapWidth    = 100
+	MapHeight   = 35
 	MapStartX   = 0
 	MapStartY   = 1
 	SViewStartX = 0
@@ -20,8 +17,28 @@ const (
 )
 
 var (
-	gameMap  *GameMap
-	defStyle tcell.Style
+	gameMap    *GameMap
+	defBgColor tcell.Color = tcell.ColorDarkSlateBlue
+	defFgColor tcell.Color = tcell.ColorWhite
+
+	screenBgColor tcell.Color = tcell.ColorBlack
+	screenFgColor tcell.Color = tcell.ColorWhite
+
+	player1FgColor tcell.Color = tcell.ColorGreen
+
+	defStyle tcell.Style = tcell.StyleDefault.
+			Background(defBgColor).
+			Foreground(defFgColor)
+	screenStyle tcell.Style = tcell.StyleDefault.
+			Background(screenBgColor).
+			Foreground(screenFgColor)
+	player1Style tcell.Style = tcell.StyleDefault.
+			Background(defBgColor).
+			Foreground(player1FgColor)
+
+	dx, dy int
+
+	bitRune rune = '*'
 )
 
 type Game struct {
@@ -29,8 +46,13 @@ type Game struct {
 	lview   *views.ViewPort
 	sview   *views.ViewPort
 	sbar    *views.TextBar
-	players []*entities.Player
-	bits    []*entities.Bit
+	players []*Player
+	bits    []*Bit
+}
+
+func (g *Game) moveInterval() time.Duration {
+	ms := 70
+	return time.Duration(ms) * time.Millisecond
 }
 
 func (g *Game) Init() error {
@@ -41,14 +63,9 @@ func (g *Game) Init() error {
 	} else if err = screen.Init(); err != nil {
 		return err
 	} else {
-		screen.SetStyle(tcell.StyleDefault.
-			Background(tcell.ColorBlack).
-			Foreground(tcell.ColorWhite))
+		screen.SetStyle(screenStyle)
 		g.screen = screen
 	}
-
-	// Set default colors and style
-	bgColor := tcell.ColorDarkSlateBlue
 
 	// Prepare screen
 	g.screen.EnableMouse()
@@ -63,51 +80,63 @@ func (g *Game) Init() error {
 		Height: MapHeight,
 	}
 
-	gameMap.InitializeMap()
+	gameMap.InitializeMap(defStyle)
 
 	x := MapWidth / 2
 	y := MapHeight / 2
-	pStyle := tcell.StyleDefault.
-		Background(bgColor).
-		Foreground(tcell.ColorWhite)
-	p1 := entities.NewPlayer(x, y, 0, 'O', "Player1", pStyle)
+	p1 := NewPlayer(x, y, 0, 3, '█', "Player1", player1Style)
 	g.players = append(g.players, &p1)
 
 	// b := NewBit(10, 10, 10, '*', pStyle)
 	// g.bits = append(g.bits, &b)
-	b := entities.SetBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, '*', tcell.StyleDefault.
-		Background(tcell.ColorDarkSlateBlue).
-		Foreground(tcell.ColorWhite))
+	b := NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, bitRune, defStyle)
 	g.bits = append(g.bits, &b)
 	return nil
 }
 
 func (g *Game) Run() error {
 
-	var b entities.Bit
+	var b Bit
 	renderAll(g, defStyle, gameMap, g.players, g.bits)
 
+mainloop:
 	for {
 		g.screen.Show()
 
-		handleInput(g.screen, g.players[0])
+		for _, p := range g.players {
+			dx, dy = 0, 0
+			go handleInput(g.screen, p)
 
-		for a, p := range g.players {
+			switch p.direction {
+			case 1:
+				dy--
+			case 2:
+				dy++
+			case 3:
+				dx--
+			case 4:
+				dx++
+			}
+			if !gameMap.IsBlocked(p.pos[0].x+dx, p.pos[0].y+dy) {
+				p.MoveEntity(dx, dy)
+			} else {
+				g.screen.Clear()
+				renderStr(g.sview, SViewStartX, SViewStartY, defStyle, "Game Over")
+				break mainloop
+			}
+
 			for i, bit := range g.bits {
-				if p.Pos[0].X == bit.X && p.Pos[0].Y == bit.Y {
-					p.Score += bit.Points
-					g.players[a].AddSegment('O', tcell.StyleDefault.
-						Background(tcell.ColorDarkSlateBlue).
-						Foreground(tcell.ColorWhite))
+				if p.pos[0].x == bit.x && p.pos[0].y == bit.y {
+					p.score += bit.points
+					p.AddSegment(p.pos[0].char, p.pos[0].style)
 					g.bits = append(g.bits[:i], g.bits[i+1:]...)
-					b = entities.SetBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, '*', tcell.StyleDefault.
-						Background(tcell.ColorDarkSlateBlue).
-						Foreground(tcell.ColorWhite))
+					b = NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, bitRune, defStyle)
 				}
 			}
 		}
 		g.bits = append(g.bits, &b)
 		renderAll(g, defStyle, gameMap, g.players, g.bits)
+		time.Sleep(g.moveInterval())
 	}
 	return nil
 }

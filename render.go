@@ -1,7 +1,6 @@
 package main
 
 import (
-	"gosnake/entities"
 	"strconv"
 
 	"github.com/gdamore/tcell"
@@ -9,24 +8,22 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*entities.Player, bits []*entities.Bit) {
+func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*Player, bits []*Bit) {
 	g.lview.Clear()
 	renderMap(g, gameMap)
 	renderBits(g, bits)
 	renderPlayers(g, players)
-	score := strconv.Itoa(players[0].Score)
+	score := strconv.Itoa(players[0].score)
 	renderStr(g.sview, 0, 0, style, ("Score: " + score))
 }
 
 func renderMap(g *Game, gameMap *GameMap) {
 	for x := 0; x < gameMap.Width; x++ {
 		for y := 0; y < gameMap.Height; y++ {
-			fgColor := tcell.ColorBurlyWood
-			tileStyle := tcell.StyleDefault.Foreground(fgColor)
-			if gameMap.Tiles[x][y].Blocked == true {
-				renderStr(g.lview, x, y, tileStyle, "▒")
+			if gameMap.Tiles[x][y].blocked == true {
+				renderStr(g.lview, x, y, gameMap.Tiles[x][y].style, "▒")
 			} else {
-				renderStr(g.lview, x, y, tileStyle, string(' '))
+				renderStr(g.lview, x, y, gameMap.Tiles[x][y].style, string(' '))
 			}
 		}
 	}
@@ -52,24 +49,24 @@ func renderRune(v *views.ViewPort, x, y int, style tcell.Style, char rune) {
 	v.SetContent(x, y, char, comb, style)
 }
 
-func renderEntity(v *views.ViewPort, p *entities.Player) {
-	for _, pos := range p.Pos {
+func renderEntity(v *views.ViewPort, p *Player) {
+	for _, pos := range p.pos {
 		var comb []rune
 		comb = nil
-		c := pos.Char
-		v.SetContent(pos.X, pos.Y, c, comb, pos.Style)
+		c := pos.char
+		v.SetContent(pos.x, pos.y, c, comb, pos.style)
 	}
 
 }
 
-func renderPlayers(g *Game, players []*entities.Player) {
+func renderPlayers(g *Game, players []*Player) {
 	for _, player := range players {
 		renderEntity(g.lview, player)
 	}
 }
 
-func renderBits(g *Game, bits []*entities.Bit) {
+func renderBits(g *Game, bits []*Bit) {
 	for _, bit := range bits {
-		renderRune(g.lview, bit.X, bit.Y, bit.Style, bit.Char)
+		renderRune(g.lview, bit.x, bit.y, bit.style, bit.char)
 	}
 }
