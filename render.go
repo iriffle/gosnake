@@ -43,6 +43,12 @@ func renderStr(v *views.ViewPort, x, y int, style tcell.Style, str string) {
 	}
 }
 
+func renderCenterStr(v *views.ViewPort, w, h int, style tcell.Style, str string) {
+	x := (w / 2) - (len(str) / 2)
+	y := (h / 2)
+	renderStr(v, x, y, style, str)
+}
+
 func renderRune(v *views.ViewPort, x, y int, style tcell.Style, char rune) {
 	var comb []rune
 	comb = nil

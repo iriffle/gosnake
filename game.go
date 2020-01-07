@@ -17,13 +17,11 @@ const (
 )
 
 var (
-	gameMap    *GameMap
-	defBgColor tcell.Color = tcell.ColorDarkSlateBlue
-	defFgColor tcell.Color = tcell.ColorWhite
-
-	screenBgColor tcell.Color = tcell.ColorBlack
-	screenFgColor tcell.Color = tcell.ColorWhite
-
+	gameMap        *GameMap
+	defBgColor     tcell.Color = tcell.ColorDarkSlateBlue
+	defFgColor     tcell.Color = tcell.ColorWhite
+	screenBgColor  tcell.Color = tcell.ColorBlack
+	screenFgColor  tcell.Color = tcell.ColorWhite
 	player1FgColor tcell.Color = tcell.ColorGreen
 
 	defStyle tcell.Style = tcell.StyleDefault.
@@ -99,7 +97,6 @@ func (g *Game) Run() error {
 	var b Bit
 	renderAll(g, defStyle, gameMap, g.players, g.bits)
 
-mainloop:
 	for {
 		g.screen.Show()
 
@@ -120,9 +117,7 @@ mainloop:
 			if !gameMap.IsBlocked(p.pos[0].x+dx, p.pos[0].y+dy) {
 				p.MoveEntity(dx, dy)
 			} else {
-				g.screen.Clear()
-				renderStr(g.sview, SViewStartX, SViewStartY, defStyle, "Game Over")
-				break mainloop
+				g.GameOver()
 			}
 
 			for i, bit := range g.bits {
@@ -138,5 +133,15 @@ mainloop:
 		renderAll(g, defStyle, gameMap, g.players, g.bits)
 		time.Sleep(g.moveInterval())
 	}
+	return nil
+}
+
+func (g *Game) GameOver() error {
+	g.screen.Clear()
+	gameOver := "GAME OVER"
+	pressEnter := "Press Enter to play again. F12 to quit..."
+	renderCenterStr(g.lview, MapWidth, MapHeight, defStyle, gameOver)
+	renderCenterStr(g.lview, MapWidth, MapHeight+1, defStyle, pressEnter)
+	g.screen.Show()
 	return nil
 }

@@ -30,8 +30,14 @@ func main() {
 		fmt.Printf("Failed to initialize game: %v\n", err)
 		os.Exit(1)
 	}
-	if err := game.Run(); err != nil {
-		fmt.Printf("Failed to run game: %v\n", err)
-		os.Exit(1)
+	for {
+		if err := game.Run(); err != nil {
+			fmt.Printf("Failed to run game: %v\n", err)
+			os.Exit(1)
+		}
+		if err := game.GameOver(); err != nil {
+			fmt.Printf("Failed to run game over: %v\n, err")
+			os.Exit(1)
+		}
 	}
 }
