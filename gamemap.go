@@ -10,30 +10,27 @@ type GameMap struct {
 	Objects [][]*Object
 }
 
-func (m *GameMap) InitializeMap(wallRune, floorRune rune, defStyle tcell.Style) {
-	// Set up a map where all the border (edge) Tiles are walls (block movement, and sight)
-	// This is just a test method, we will build maps more dynamically in the future.
+func (m *GameMap) InitMap() {
 	m.Objects = make([][]*Object, m.Width)
 	for i := range m.Objects {
 		m.Objects[i] = make([]*Object, m.Height)
 	}
+}
+
+func (m *GameMap) InitMapBoundary(wallrune, floorRune rune, style tcell.Style) {
 
 	for x := 0; x < m.Width; x++ {
 		for y := 0; y < m.Height; y++ {
 			if x == 0 || x == m.Width-1 || y == 0 || y == m.Height-1 {
-				m.Objects[x][y] = &Object{x, y, x, y, wallRune, defStyle, true}
+				m.Objects[x][y] = &Object{x, y, x, y, wallRune, style, true}
 			} else {
-				m.Objects[x][y] = &Object{x, y, x, y, floorRune, defStyle, false}
+				m.Objects[x][y] = &Object{x, y, x, y, floorRune, style, false}
 			}
 		}
 	}
 }
 
-func (m *GameMap) IsBlocked(x int, y int) bool {
-	// Check to see if the provided coordinates contain a blocked tile
-	if m.Objects[x][y].blocked {
-		return true
-	} else {
-		return false
-	}
+func (m *GameMap) InitLevel1(wallRune, floorRune rune, style tcell.Style) {
+	m.InitMap()
+	m.InitMapBoundary(wallRune, floorRune, style)
 }

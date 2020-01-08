@@ -23,7 +23,7 @@ func handleInput(g *Game, p *Player) {
 				g.state = 0
 			} else {
 				g.state = 2
-				g.Pause()
+				g.Pause(p)
 			}
 		}
 		switch ev.Rune() {

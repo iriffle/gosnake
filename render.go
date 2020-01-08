@@ -13,13 +13,16 @@ var scores string
 func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*Player, bits []*Bit) {
 	g.lview.Clear()
 	renderMap(g.lview, gameMap)
+	level := "Level: " + strconv.Itoa(g.level)
+	renderCenterStr(g.lview, MapWidth, MapHeight-2, DefStyle, level)
 	for _, player := range g.players {
 		scores = "Score: " + strconv.Itoa(player.score) + " "
 	}
 	renderCenterStr(g.lview, MapWidth, MapHeight, DefStyle, scores)
 	renderBits(g.lview, bits)
 	renderPlayers(g.lview, players)
-	//renderScore(g, players, ScreenStyle)
+	g.sbar.SetCenter(Controls, ControlStyle)
+	g.sbar.Draw()
 }
 
 func renderMap(v *views.ViewPort, gameMap *GameMap) {
@@ -55,14 +58,6 @@ func renderBits(v *views.ViewPort, bits []*Bit) {
 		renderRune(v, bit.x, bit.y, bit.style, bit.char)
 	}
 }
-
-// func renderScore(g *Game, players []*Player, style tcell.Style) {
-// 	var score string = ""
-// 	for _, player := range players {
-// 		score = score + "Score: " + strconv.Itoa(player.score) + " "
-// 	}
-// 	renderCenterStr(g.sview, MapWidth, 1, style, score)
-// }
 
 func renderStr(v *views.ViewPort, x, y int, style tcell.Style, str string) {
 	for _, c := range str {

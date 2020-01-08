@@ -19,6 +19,16 @@ func NewPlayer(x, y, score, direction int, char rune, name string, style tcell.S
 	return p
 }
 
+func (p *Player) CheckPlayerOnBit(bits []*Bit) (bool, int) {
+	i := 0
+	for i, bit := range bits {
+		if p.pos[0].x == bit.x && p.pos[0].y == bit.y {
+			return true, i
+		}
+	}
+	return false, i
+}
+
 func (p *Player) IsPlayerBlocked(m *GameMap, players []*Player) bool {
 	if p.IsPlayerBlockedByPlayer(players) {
 		return true
