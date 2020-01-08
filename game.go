@@ -1,19 +1,22 @@
 package main
 
 import (
+	"time"
+
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/encoding"
 	"github.com/gdamore/tcell/views"
-	"time"
 )
 
 const (
 	MapWidth    = 100
 	MapHeight   = 35
 	MapStartX   = 0
-	MapStartY   = 1
-	SViewStartX = 0
-	SViewStartY = 0
+	MapStartY   = 0
+	SViewWidth  = 40
+	SViewHeight = 20
+	SViewStartX = (MapWidth / 2) - (SViewWidth / 2)
+	SViewStartY = (MapHeight / 2) - (SViewHeight / 2)
 
 	DefBGColor     tcell.Color = tcell.ColorDarkSlateBlue
 	DefFGColor     tcell.Color = tcell.ColorSteelBlue
@@ -41,8 +44,10 @@ var (
 
 	dx, dy int
 
-	BitRune rune = '*'
-	numBits int  = 5
+	bitRune   rune = '*'
+	wallRune  rune = '▒'
+	floorRune rune = ' '
+	numBits   int  = 5
 )
 
 type Game struct {
@@ -76,9 +81,9 @@ func (g *Game) Init() error {
 	g.screen.EnableMouse()
 	g.screen.Clear()
 	g.lview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
-	g.sview = views.NewViewPort(g.screen, SViewStartX, SViewStartY, -1, 1)
-	g.sbar = views.NewTextBar()
-	g.sbar.SetView(g.sview)
+	//g.sview = views.NewViewPort(g.screen, SViewStartX, SViewStartY, SViewWidth, SViewHeight)
+	//g.sbar = views.NewTextBar()
+	//g.sbar.SetView(g.sview)
 
 	g.state = 0
 
@@ -87,7 +92,7 @@ func (g *Game) Init() error {
 		Height: MapHeight,
 	}
 
-	gameMap.InitializeMap(DefStyle)
+	gameMap.InitializeMap(wallRune, floorRune, DefStyle)
 
 	x := MapWidth / 2
 	y := MapHeight / 2
@@ -95,7 +100,7 @@ func (g *Game) Init() error {
 	g.players = append(g.players, &p1)
 
 	for i := 0; i < numBits; i++ {
-		b := NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, BitRune, BitStyle)
+		b := NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, bitRune, BitStyle)
 		g.bits = append(g.bits, &b)
 	}
 	return nil
@@ -138,7 +143,7 @@ func (g *Game) Run() error {
 						p.score += bit.points
 						p.AddSegment(p.pos[0].char, p.pos[0].style)
 						g.bits = append(g.bits[:i], g.bits[i+1:]...)
-						b = NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, BitRune, BitStyle)
+						b = NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, bitRune, BitStyle)
 					}
 				}
 			}

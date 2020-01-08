@@ -10,7 +10,7 @@ type GameMap struct {
 	Objects [][]*Object
 }
 
-func (m *GameMap) InitializeMap(defStyle tcell.Style) {
+func (m *GameMap) InitializeMap(wallRune, floorRune rune, defStyle tcell.Style) {
 	// Set up a map where all the border (edge) Tiles are walls (block movement, and sight)
 	// This is just a test method, we will build maps more dynamically in the future.
 	m.Objects = make([][]*Object, m.Width)
@@ -21,9 +21,9 @@ func (m *GameMap) InitializeMap(defStyle tcell.Style) {
 	for x := 0; x < m.Width; x++ {
 		for y := 0; y < m.Height; y++ {
 			if x == 0 || x == m.Width-1 || y == 0 || y == m.Height-1 {
-				m.Objects[x][y] = &Object{x, y, x, y, '▒', defStyle, true}
+				m.Objects[x][y] = &Object{x, y, x, y, wallRune, defStyle, true}
 			} else {
-				m.Objects[x][y] = &Object{x, y, x, y, ' ', defStyle, false}
+				m.Objects[x][y] = &Object{x, y, x, y, floorRune, defStyle, false}
 			}
 		}
 	}

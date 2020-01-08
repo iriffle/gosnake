@@ -1,33 +1,34 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/views"
 	"github.com/mattn/go-runewidth"
-	"strconv"
 )
 
-var bitPos string
+var scores string
 
 func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*Player, bits []*Bit) {
 	g.lview.Clear()
-	renderMap(g, gameMap)
-	renderBits(g, bits)
-	renderPlayers(g, players)
-	renderScore(g, players, ScreenStyle)
-	for _, bit := range g.bits {
-		bitPos = "(" + strconv.Itoa(bit.x) + "," + strconv.Itoa(bit.y) + ") "
+	renderMap(g.lview, gameMap)
+	for _, player := range g.players {
+		scores = "Score: " + strconv.Itoa(player.score) + " "
 	}
-	renderCenterStr(g.lview, MapWidth, MapHeight, DefStyle, bitPos)
+	renderCenterStr(g.lview, MapWidth, MapHeight, DefStyle, scores)
+	renderBits(g.lview, bits)
+	renderPlayers(g.lview, players)
+	//renderScore(g, players, ScreenStyle)
 }
 
-func renderMap(g *Game, gameMap *GameMap) {
+func renderMap(v *views.ViewPort, gameMap *GameMap) {
 	for x := 0; x < gameMap.Width; x++ {
 		for y := 0; y < gameMap.Height; y++ {
 			if gameMap.Objects[x][y].blocked == true {
-				renderRune(g.lview, x, y, gameMap.Objects[x][y].style, gameMap.Objects[x][y].char)
+				renderRune(v, x, y, gameMap.Objects[x][y].style, gameMap.Objects[x][y].char)
 			} else {
-				renderRune(g.lview, x, y, gameMap.Objects[x][y].style, gameMap.Objects[x][y].char)
+				renderRune(v, x, y, gameMap.Objects[x][y].style, gameMap.Objects[x][y].char)
 			}
 		}
 	}
@@ -43,25 +44,25 @@ func renderEntity(v *views.ViewPort, p *Player) {
 
 }
 
-func renderPlayers(g *Game, players []*Player) {
+func renderPlayers(v *views.ViewPort, players []*Player) {
 	for _, player := range players {
-		renderEntity(g.lview, player)
+		renderEntity(v, player)
 	}
 }
 
-func renderBits(g *Game, bits []*Bit) {
+func renderBits(v *views.ViewPort, bits []*Bit) {
 	for _, bit := range bits {
-		renderRune(g.lview, bit.x, bit.y, bit.style, bit.char)
+		renderRune(v, bit.x, bit.y, bit.style, bit.char)
 	}
 }
 
-func renderScore(g *Game, players []*Player, style tcell.Style) {
-	var score string = ""
-	for _, player := range players {
-		score = score + "Score: " + strconv.Itoa(player.score) + " "
-	}
-	renderCenterStr(g.sview, MapWidth, 1, style, score)
-}
+// func renderScore(g *Game, players []*Player, style tcell.Style) {
+// 	var score string = ""
+// 	for _, player := range players {
+// 		score = score + "Score: " + strconv.Itoa(player.score) + " "
+// 	}
+// 	renderCenterStr(g.sview, MapWidth, 1, style, score)
+// }
 
 func renderStr(v *views.ViewPort, x, y int, style tcell.Style, str string) {
 	for _, c := range str {
