@@ -2,7 +2,6 @@ package main
 
 import (
 	"math/rand"
-	"time"
 
 	"github.com/gdamore/tcell"
 )
@@ -21,14 +20,17 @@ func NewBit(x, y, points int, char rune, style tcell.Style) Bit {
 	return b
 }
 
-func NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight int, points int, char rune, style tcell.Style) Bit {
-	rand.Seed(time.Now().UnixNano())
-	minX := MapStartX + 2
-	maxX := minX + MapWidth - 2
-	minY := MapStartY + 2
-	maxY := minY + MapHeight - 2
-	randX := rand.Intn(maxX - minX)
-	randY := rand.Intn(maxY - minY)
+func NewRandomBit(mapStartX, mapStartY, mapWidth, mapHeight int, points int, char rune, style tcell.Style) Bit {
+	randX := rand.Intn(mapWidth)
+	randY := rand.Intn(mapHeight)
+	if randX == mapWidth {
+		randX = randX - 1
+	}
+	if randY == mapHeight {
+		randY = randY - 1
+	} else if randY == 1 {
+		randY = randY + 1
+	}
 	b := NewBit(randX, randY, points, char, style)
 	return b
 }

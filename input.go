@@ -6,17 +6,25 @@ import (
 	"github.com/gdamore/tcell"
 )
 
-// var (
-// 	dx, dy int
-// )
-
-func handleInput(s tcell.Screen, p *Player) {
-	ev := s.PollEvent()
+func handleInput(g *Game, p *Player) {
+	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
-		if ev.Key() == tcell.KeyF12 {
-			s.Fini()
+		if ev.Key() == tcell.KeyEscape {
+			g.screen.Fini()
 			os.Exit(0)
+		}
+		if ev.Key() == tcell.KeyF1 {
+			g.screen.Fini()
+			g.state = 1
+		}
+		if ev.Key() == tcell.KeyF12 {
+			if g.state == 2 {
+				g.state = 0
+			} else {
+				g.state = 2
+				g.Pause()
+			}
 		}
 		switch ev.Rune() {
 		case 'w':

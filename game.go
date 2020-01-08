@@ -14,29 +14,35 @@ const (
 	MapStartY   = 1
 	SViewStartX = 0
 	SViewStartY = 0
+
+	DefBGColor     tcell.Color = tcell.ColorDarkSlateBlue
+	DefFGColor     tcell.Color = tcell.ColorSteelBlue
+	ScreenBGColor  tcell.Color = tcell.ColorBlack
+	ScreenFGColor  tcell.Color = tcell.ColorWhite
+	Player1FGColor tcell.Color = tcell.ColorGreen
+	BitFGColor     tcell.Color = tcell.ColorWhite
 )
 
 var (
-	gameMap        *GameMap
-	defBgColor     tcell.Color = tcell.ColorDarkSlateBlue
-	defFgColor     tcell.Color = tcell.ColorWhite
-	screenBgColor  tcell.Color = tcell.ColorBlack
-	screenFgColor  tcell.Color = tcell.ColorWhite
-	player1FgColor tcell.Color = tcell.ColorGreen
+	gameMap *GameMap
 
-	defStyle tcell.Style = tcell.StyleDefault.
-			Background(defBgColor).
-			Foreground(defFgColor)
-	screenStyle tcell.Style = tcell.StyleDefault.
-			Background(screenBgColor).
-			Foreground(screenFgColor)
-	player1Style tcell.Style = tcell.StyleDefault.
-			Background(defBgColor).
-			Foreground(player1FgColor)
+	DefStyle tcell.Style = tcell.StyleDefault.
+			Background(DefBGColor).
+			Foreground(DefFGColor)
+	ScreenStyle tcell.Style = tcell.StyleDefault.
+			Background(ScreenBGColor).
+			Foreground(ScreenFGColor)
+	Player1Style tcell.Style = tcell.StyleDefault.
+			Background(DefBGColor).
+			Foreground(Player1FGColor)
+	BitStyle tcell.Style = tcell.StyleDefault.
+			Background(DefBGColor).
+			Foreground(BitFGColor)
 
 	dx, dy int
 
-	bitRune rune = '*'
+	BitRune rune = '*'
+	numBits int  = 5
 )
 
 type Game struct {
@@ -46,10 +52,11 @@ type Game struct {
 	sbar    *views.TextBar
 	players []*Player
 	bits    []*Bit
+	state   int
 }
 
-func (g *Game) moveInterval() time.Duration {
-	ms := 70
+func (g *Game) moveInterval(score int) time.Duration {
+	ms := 80 - (score / 10)
 	return time.Duration(ms) * time.Millisecond
 }
 
@@ -61,7 +68,7 @@ func (g *Game) Init() error {
 	} else if err = screen.Init(); err != nil {
 		return err
 	} else {
-		screen.SetStyle(screenStyle)
+		screen.SetStyle(ScreenStyle)
 		g.screen = screen
 	}
 
@@ -73,75 +80,78 @@ func (g *Game) Init() error {
 	g.sbar = views.NewTextBar()
 	g.sbar.SetView(g.sview)
 
+	g.state = 0
+
 	gameMap = &GameMap{
 		Width:  MapWidth,
 		Height: MapHeight,
 	}
 
-	gameMap.InitializeMap(defStyle)
+	gameMap.InitializeMap(DefStyle)
 
 	x := MapWidth / 2
 	y := MapHeight / 2
-	p1 := NewPlayer(x, y, 0, 3, '█', "Player1", player1Style)
+	p1 := NewPlayer(x, y, 0, 3, '█', "Player1", Player1Style)
 	g.players = append(g.players, &p1)
 
-	// b := NewBit(10, 10, 10, '*', pStyle)
-	// g.bits = append(g.bits, &b)
-	b := NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, bitRune, defStyle)
-	g.bits = append(g.bits, &b)
+	for i := 0; i < numBits; i++ {
+		b := NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, BitRune, BitStyle)
+		g.bits = append(g.bits, &b)
+	}
 	return nil
 }
 
 func (g *Game) Run() error {
 
 	var b Bit
-	renderAll(g, defStyle, gameMap, g.players, g.bits)
+	renderAll(g, DefStyle, gameMap, g.players, g.bits)
 
-	for {
+	for !(g.state == 1) {
 		g.screen.Show()
 
-		for _, p := range g.players {
-			dx, dy = 0, 0
-			go handleInput(g.screen, p)
+		go func() {
+			for _, p := range g.players {
+				dx, dy = 0, 0
+				go handleInput(g, p)
 
-			switch p.direction {
-			case 1:
-				dy--
-			case 2:
-				dy++
-			case 3:
-				dx--
-			case 4:
-				dx++
-			}
-			if !gameMap.IsBlocked(p.pos[0].x+dx, p.pos[0].y+dy) {
-				p.MoveEntity(dx, dy)
-			} else {
-				g.GameOver()
-			}
+				switch p.direction {
+				case 1:
+					dy--
+				case 2:
+					dy++
+				case 3:
+					dx--
+				case 4:
+					dx++
+				}
+				go func() {
+					if p.IsPlayerBlocked(gameMap, g.players) {
+						g.screen.Fini()
+						g.state = 1
+					} else {
+						p.MoveEntity(dx, dy)
+					}
+				}()
 
-			for i, bit := range g.bits {
-				if p.pos[0].x == bit.x && p.pos[0].y == bit.y {
-					p.score += bit.points
-					p.AddSegment(p.pos[0].char, p.pos[0].style)
-					g.bits = append(g.bits[:i], g.bits[i+1:]...)
-					b = NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, bitRune, defStyle)
+				for i, bit := range g.bits {
+					if p.pos[0].x == bit.x && p.pos[0].y == bit.y {
+						p.score += bit.points
+						p.AddSegment(p.pos[0].char, p.pos[0].style)
+						g.bits = append(g.bits[:i], g.bits[i+1:]...)
+						b = NewRandomBit(MapStartX, MapStartY, MapWidth, MapHeight, 10, BitRune, BitStyle)
+					}
 				}
 			}
-		}
+		}()
 		g.bits = append(g.bits, &b)
-		renderAll(g, defStyle, gameMap, g.players, g.bits)
-		time.Sleep(g.moveInterval())
+		renderAll(g, DefStyle, gameMap, g.players, g.bits)
+		time.Sleep(g.moveInterval(g.players[0].score))
 	}
 	return nil
 }
 
-func (g *Game) GameOver() error {
-	g.screen.Clear()
-	gameOver := "GAME OVER"
-	pressEnter := "Press Enter to play again. F12 to quit..."
-	renderCenterStr(g.lview, MapWidth, MapHeight, defStyle, gameOver)
-	renderCenterStr(g.lview, MapWidth, MapHeight+1, defStyle, pressEnter)
-	g.screen.Show()
-	return nil
+func (g *Game) Pause() {
+	for g.state == 2 {
+		go handleInput(g, g.players[0])
+	}
 }
