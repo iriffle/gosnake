@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+var (
+	lastGameState  int = Play
+	lastNumPlayers int
+)
+
 func main() {
 
 	var logfile string
@@ -27,14 +32,21 @@ func main() {
 	}
 
 	for {
-		game := &Game{}
+		game := &Game{debug: true,
+			numPlayers: lastNumPlayers}
 		if err := game.InitScreen(); err != nil {
 			fmt.Printf("Failed to initialize game: %v\n", err)
 			os.Exit(1)
 		}
-		game.MainMenu()
+		if lastGameState == Play || lastGameState == MainMenu {
+			game.MainMenu()
+		}
 		game.InitGame()
 		game.Run()
-
+		if game.state == Quit {
+			game.Quit()
+		}
+		lastGameState = game.state
+		lastNumPlayers = game.numPlayers
 	}
 }

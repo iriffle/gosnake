@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strconv"
 	"time"
 
@@ -10,20 +11,31 @@ import (
 )
 
 const (
+	Play     = 0
+	Quit     = 1
+	Pause    = 2
+	Restart  = 3
+	MainMenu = 4
+
 	// Map values
-	GameWidth  = 100
-	GameHeight = 35
-	MapStartX  = 0
-	MapStartY  = 0
+	MapWidth  = 100
+	MapHeight = 35
+	MapStartX = 0
+	MapStartY = 0
 
 	// Control bar values
-	CViewWidth  = GameWidth
-	CViewHeight = 1
-	CViewStartX = 0
-	CViewStartY = GameHeight + 1
+	sviewWidth  = MapWidth
+	sviewHeight = 1
+	sviewStartX = 0
+	sviewStartY = MapHeight + 1
+
+	cviewWidth  = MapWidth
+	cviewHeight = 1
+	cviewStartX = 0
+	cviewStartY = sviewStartY + 2
 
 	// Preset colors
-	DefBGColor     tcell.Color = tcell.ColorDarkSlateBlue
+	DefBGColor     tcell.Color = tcell.ColorBlack
 	DefFGColor     tcell.Color = tcell.ColorSteelBlue
 	ScreenBGColor  tcell.Color = tcell.ColorBlack
 	ScreenFGColor  tcell.Color = tcell.ColorWhite
@@ -48,6 +60,9 @@ var (
 	ControlStyle tcell.Style = tcell.StyleDefault.
 			Background(ScreenBGColor).
 			Foreground(ScreenFGColor)
+	DebugStyle tcell.Style = tcell.StyleDefault.
+			Background(ScreenBGColor).
+			Foreground(ScreenFGColor)
 
 	// Text to be displayed at bottom for controls
 	Controls string = "w/s/a/d = up/down/left/right - esc = quit - f1 = restart - f12 = pause"
@@ -68,6 +83,8 @@ var (
 type Game struct {
 	screen     tcell.Screen
 	gview      *views.ViewPort
+	sview      *views.ViewPort
+	sbar       *views.TextBar
 	cview      *views.ViewPort
 	cbar       *views.TextBar
 	players    []*Player
@@ -76,6 +93,7 @@ type Game struct {
 	level      int
 	numPlayers int
 	colors     []tcell.Color
+	debug      bool
 }
 
 func (g *Game) InitScreen() error {
@@ -91,13 +109,25 @@ func (g *Game) InitScreen() error {
 	}
 
 	// Prepare screen
-	g.screen.EnableMouse()
+	if g.screen.HasMouse() {
+		g.screen.EnableMouse()
+	}
+	g.screen.ShowCursor(0, 0)
 	g.screen.Clear()
-	g.gview = views.NewViewPort(g.screen, MapStartX, MapStartY, GameWidth, GameHeight)
-	g.cview = views.NewViewPort(g.screen, CViewStartX, CViewStartY, CViewWidth, CViewHeight)
-	g.cbar = views.NewTextBar()
-	g.cbar.SetView(g.cview)
-	g.cbar.SetStyle(ControlStyle)
+	g.gview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
+	g.sview = views.NewViewPort(g.screen, sviewStartX, sviewStartY, sviewWidth, sviewHeight)
+	g.sbar = views.NewTextBar()
+	g.sbar.SetView(g.sview)
+	g.sbar.SetStyle(ControlStyle)
+
+	if g.debug {
+		g.cview = views.NewViewPort(g.screen, cviewStartX, cviewStartY, cviewWidth, cviewHeight)
+		g.cbar = views.NewTextBar()
+		g.cbar.SetView(g.cview)
+		g.cbar.SetStyle(DebugStyle)
+	}
+
+	BitStyle = BitStyle.Bold(true)
 
 	return nil
 }
@@ -108,11 +138,11 @@ func (g *Game) MainMenu() {
 	for !(choice == 3) {
 		switch choice {
 		case 1:
-			renderCenterStr(g.gview, GameWidth, GameHeight-4, BitStyle, "1 Player")
-			renderCenterStr(g.gview, GameWidth, GameHeight, DefStyle, "2 Player")
+			renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "1 Player")
+			renderCenterStr(g.gview, MapWidth, MapHeight, DefStyle, "2 Player")
 		case 2:
-			renderCenterStr(g.gview, GameWidth, GameHeight-4, DefStyle, "1 Player")
-			renderCenterStr(g.gview, GameWidth, GameHeight, BitStyle, "2 Player")
+			renderCenterStr(g.gview, MapWidth, MapHeight-4, DefStyle, "1 Player")
+			renderCenterStr(g.gview, MapWidth, MapHeight, BitStyle, "2 Player")
 		}
 		g.screen.Show()
 		lastChoice = choice
@@ -127,21 +157,21 @@ func (g *Game) MainMenu() {
 }
 
 func (g *Game) InitGame() {
-	g.state = 0
+	g.state = Play
 	g.level = 1
 
 	gameMap = &GameMap{
-		Width:  GameWidth,
-		Height: GameHeight,
+		Width:  MapWidth,
+		Height: MapHeight,
 	}
 	gameMap.InitLevel1(wallRune, floorRune, DefStyle)
 
 	g.colors = append(g.colors, tcell.ColorGreen, tcell.ColorRed)
 
-	x := GameWidth / 2
+	x := MapWidth / 2
 
 	for i := 0; i < g.numPlayers; i++ {
-		y := (GameHeight / 2) + (i * 2)
+		y := (MapHeight / 2) + (i * 2)
 
 		pName := "player"
 		pName = pName + strconv.Itoa(i+1)
@@ -149,7 +179,7 @@ func (g *Game) InitGame() {
 		pStyle := tcell.StyleDefault.
 			Background(DefBGColor).
 			Foreground(g.colors[i])
-		p := NewPlayer(x, y, 0, 3, playerRune, pName, pStyle)
+		p := NewPlayer(x, y, 0, 3+i, playerRune, pName, pStyle)
 		g.players = append(g.players, &p)
 	}
 
@@ -162,12 +192,16 @@ func (g *Game) InitGame() {
 func (g *Game) Run() {
 	renderAll(g, DefStyle, gameMap, g.players, g.bits)
 
-	for !(g.state == 1) {
+	for g.state == Play || g.state == Pause {
+		go handleInput(g)
 
 		for _, p := range g.players {
-			dx, dy = 0, 0
-			go handleInput(g)
 
+			for g.state == Pause {
+				continue
+			}
+
+			dx, dy = 0, 0
 			switch p.direction {
 			case 1:
 				dy--
@@ -182,7 +216,7 @@ func (g *Game) Run() {
 			if p.IsPlayerBlocked(gameMap, g.players) {
 				if g.numPlayers == 1 {
 					g.screen.Fini()
-					g.state = 1
+					g.state = Restart
 				} else {
 					if p.IsPlayerBlockedByPlayer(g.players) {
 						for _, i := range p.pos {
@@ -190,7 +224,7 @@ func (g *Game) Run() {
 							g.bits = append(g.bits, &b)
 						}
 					}
-					p.ResetPlayer(GameWidth/2, GameHeight/2, 3)
+					p.ResetPlayer(MapWidth/2, MapHeight/2, 3)
 				}
 			} else {
 				p.MoveEntity(dx, dy)
@@ -200,14 +234,15 @@ func (g *Game) Run() {
 		}
 
 		renderAll(g, DefStyle, gameMap, g.players, g.bits)
-		time.Sleep(g.moveInterval(g.players[0].score))
+		if g.state == Play {
+			time.Sleep(g.moveInterval(g.players[0].score))
+		}
 	}
 }
 
-func (g *Game) Pause() {
-	for g.state == 2 {
-		handlePause(g)
-	}
+func (g *Game) Quit() {
+	g.screen.Fini()
+	os.Exit(0)
 }
 
 func (g *Game) moveInterval(score int) time.Duration {

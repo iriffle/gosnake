@@ -17,8 +17,12 @@ func renderAll(g *Game, style tcell.Style, m *GameMap, players []*Player, bits [
 	renderScore(g.gview, g.players, m.Width, m.Height, style)
 	renderBits(g.gview, bits)
 	renderPlayers(g.gview, players)
-	g.cbar.SetCenter(Controls, ControlStyle)
-	g.cbar.Draw()
+	g.sbar.SetCenter(Controls, ControlStyle)
+	g.sbar.Draw()
+	if g.debug {
+		renderConsole(g, cviewWidth, cviewHeight, DebugStyle)
+		g.cbar.Draw()
+	}
 	g.screen.Show()
 }
 
@@ -48,7 +52,7 @@ func renderScore(v *views.ViewPort, players []*Player, w, h int, style tcell.Sty
 }
 
 func renderLevel(v *views.ViewPort, l, w, h int, style tcell.Style) {
-	level := "Level: " + strconv.Itoa(l)
+	level := "level: " + strconv.Itoa(l)
 	renderCenterStr(v, w, h-2, style, level)
 }
 
@@ -98,4 +102,8 @@ func renderRune(v *views.ViewPort, x, y int, style tcell.Style, char rune) {
 	var comb []rune
 	comb = nil
 	v.SetContent(x, y, char, comb, style)
+}
+
+func renderConsole(g *Game, w, h int, style tcell.Style) {
+	renderCenterStr(g.cview, w, h, style, strconv.Itoa(g.state))
 }

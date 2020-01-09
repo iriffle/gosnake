@@ -17,18 +17,27 @@ func handleInput(g *Game) {
 	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
-		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyExit {
+		if ev.Key() == tcell.KeyEscape {
 			g.screen.Fini()
-			os.Exit(0)
-		}
-		if ev.Key() == tcell.KeyF1 {
+			g.state = MainMenu
+			return
+		} else if ev.Key() == tcell.KeyExit {
+			g.state = Quit
+			return
+		} else if ev.Key() == tcell.KeyF1 {
 			g.screen.Fini()
-			g.state = 1
+			g.state = Restart
+			return
+		} else if ev.Key() == tcell.KeyF12 {
+			if g.state == Play {
+				g.state = Pause
+				return
+			} else if g.state == Pause {
+				g.state = Play
+				return
+			}
 		}
-		if ev.Key() == tcell.KeyF12 {
-			g.state = 2
-			g.Pause()
-		}
+
 		if ev.Key() == tcell.KeyUp {
 			if !(p2.direction == 2) {
 				p2.direction = 1
@@ -76,16 +85,20 @@ func handlePause(g *Game) {
 	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
-		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyExit {
+		switch ev.Key() {
+		case tcell.KeyEscape:
+			g.state = Quit
+			return
+		case tcell.KeyExit:
+			g.state = Quit
+			return
+		case tcell.KeyF1:
 			g.screen.Fini()
-			os.Exit(0)
-		}
-		if ev.Key() == tcell.KeyF1 {
-			g.screen.Fini()
-			g.state = 1
-		}
-		if ev.Key() == tcell.KeyF12 {
-			g.state = 0
+			g.state = Restart
+			return
+		case tcell.KeyF12:
+			g.state = Play
+			return
 		}
 	}
 }
@@ -94,7 +107,10 @@ func handleMenu(g *Game, choice int) int {
 	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
-		if ev.Key() == tcell.KeyUp {
+		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyExit {
+			g.screen.Fini()
+			os.Exit(0)
+		} else if ev.Key() == tcell.KeyUp {
 			return 1
 		} else if ev.Key() == tcell.KeyDown {
 			return 2
