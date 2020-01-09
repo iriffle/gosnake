@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/gdamore/tcell"
@@ -9,15 +10,19 @@ import (
 )
 
 const (
-	MapWidth    = 90
-	MapHeight   = 30
-	MapStartX   = 0
-	MapStartY   = 1
-	SViewWidth  = MapWidth
-	SViewHeight = 1
-	SViewStartX = 0
-	SViewStartY = MapHeight + 1
+	// Map values
+	GameWidth  = 90
+	GameHeight = 30
+	MapStartX  = 0
+	MapStartY  = 0
 
+	// Control bar values
+	CViewWidth  = GameWidth
+	CViewHeight = 1
+	CViewStartX = 0
+	CViewStartY = GameHeight + 1
+
+	// Preset colors
 	DefBGColor     tcell.Color = tcell.ColorDarkSlateBlue
 	DefFGColor     tcell.Color = tcell.ColorSteelBlue
 	ScreenBGColor  tcell.Color = tcell.ColorBlack
@@ -27,17 +32,16 @@ const (
 )
 
 var (
+	// Current game map
 	gameMap *GameMap
 
+	// Preset styles
 	DefStyle tcell.Style = tcell.StyleDefault.
 			Background(DefBGColor).
 			Foreground(DefFGColor)
 	ScreenStyle tcell.Style = tcell.StyleDefault.
 			Background(ScreenBGColor).
 			Foreground(ScreenFGColor)
-	Player1Style tcell.Style = tcell.StyleDefault.
-			Background(DefBGColor).
-			Foreground(Player1FGColor)
 	BitStyle tcell.Style = tcell.StyleDefault.
 			Background(DefBGColor).
 			Foreground(BitFGColor)
@@ -45,27 +49,36 @@ var (
 			Background(ScreenBGColor).
 			Foreground(ScreenFGColor)
 
+	// Text to be displayed at bottom for controls
 	Controls string = "w/s/a/d = up/down/left/right - esc = quit - f1 = restart - f12 = pause"
-	dx, dy   int
 
-	bitRune   rune = '*'
-	wallRune  rune = '▒'
-	floorRune rune = ' '
-	numBits   int  = 5
+	// Runes to be used on map
+	playerRune rune = '█'
+	bitRune    rune = '*'
+	wallRune   rune = '▒'
+	floorRune  rune = ' '
+
+	// Number of bits that should be present on map
+	numBits int = 5
+
+	// Used for player movement
+	dx, dy int
 )
 
 type Game struct {
-	screen  tcell.Screen
-	lview   *views.ViewPort
-	sview   *views.ViewPort
-	sbar    *views.TextBar
-	players []*Player
-	bits    []*Bit
-	state   int
-	level   int
+	screen     tcell.Screen
+	gview      *views.ViewPort
+	cview      *views.ViewPort
+	cbar       *views.TextBar
+	players    []*Player
+	bits       []*Bit
+	state      int
+	level      int
+	numPlayers int
+	colors     []tcell.Color
 }
 
-func (g *Game) Init() error {
+func (g *Game) InitScreen() error {
 	encoding.Register()
 
 	if screen, err := tcell.NewScreen(); err != nil {
@@ -80,74 +93,110 @@ func (g *Game) Init() error {
 	// Prepare screen
 	g.screen.EnableMouse()
 	g.screen.Clear()
-	g.lview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
-	g.sview = views.NewViewPort(g.screen, SViewStartX, SViewStartY, SViewWidth, SViewHeight)
-	g.sbar = views.NewTextBar()
-	g.sbar.SetView(g.sview)
-	g.sbar.SetStyle(ControlStyle)
+	g.gview = views.NewViewPort(g.screen, MapStartX, MapStartY, GameWidth, GameHeight)
+	g.cview = views.NewViewPort(g.screen, CViewStartX, CViewStartY, CViewWidth, CViewHeight)
+	g.cbar = views.NewTextBar()
+	g.cbar.SetView(g.cview)
+	g.cbar.SetStyle(ControlStyle)
 
+	return nil
+}
+
+func (g *Game) MainMenu() {
+	g.gview.Fill(' ', DefStyle)
+	lastChoice, choice := 1, 1
+	for !(choice == 3) {
+		switch choice {
+		case 1:
+			renderCenterStr(g.gview, GameWidth, GameHeight-4, BitStyle, "1 Player")
+			renderCenterStr(g.gview, GameWidth, GameHeight, DefStyle, "2 Player")
+		case 2:
+			renderCenterStr(g.gview, GameWidth, GameHeight-4, DefStyle, "1 Player")
+			renderCenterStr(g.gview, GameWidth, GameHeight, BitStyle, "2 Player")
+		}
+		g.screen.Show()
+		lastChoice = choice
+		choice = handleMenu(g, choice)
+	}
+	switch lastChoice {
+	case 1:
+		g.numPlayers = 1
+	case 2:
+		g.numPlayers = 2
+	}
+}
+
+func (g *Game) InitGame() {
 	g.state = 0
 	g.level = 1
 
 	gameMap = &GameMap{
-		Width:  MapWidth,
-		Height: MapHeight,
+		Width:  GameWidth,
+		Height: GameHeight,
 	}
 	gameMap.InitLevel1(wallRune, floorRune, DefStyle)
 
-	x := MapWidth / 2
-	y := MapHeight / 2
-	p1 := NewPlayer(x, y, 0, 3, '█', "Player1", Player1Style)
-	g.players = append(g.players, &p1)
+	g.colors = append(g.colors, tcell.ColorGreen, tcell.ColorRed)
+
+	x := GameWidth / 2
+
+	for i := 0; i < g.numPlayers; i++ {
+		y := (GameHeight / 2) + (i * 2)
+
+		pName := "player"
+		pName = pName + strconv.Itoa(i)
+
+		pStyle := tcell.StyleDefault.
+			Background(DefBGColor).
+			Foreground(g.colors[i])
+		p := NewPlayer(x, y, 0, 3, playerRune, pName, pStyle)
+		g.players = append(g.players, &p)
+	}
 
 	for i := 0; i < numBits; i++ {
 		b := NewRandomBit(gameMap, 10, bitRune, BitStyle)
 		g.bits = append(g.bits, &b)
 	}
-	return nil
 }
 
-func (g *Game) Run() error {
+func (g *Game) Run() {
 	renderAll(g, DefStyle, gameMap, g.players, g.bits)
 
 	for !(g.state == 1) {
-		g.screen.Show()
 
-		go func() {
-			for _, p := range g.players {
-				dx, dy = 0, 0
-				go handleInput(g, p)
+		for _, p := range g.players {
+			dx, dy = 0, 0
+			go handleInput(g)
 
-				switch p.direction {
-				case 1:
-					dy--
-				case 2:
-					dy++
-				case 3:
-					dx--
-				case 4:
-					dx++
-				}
-				go func() {
-					if p.IsPlayerBlocked(gameMap, g.players) {
-						g.screen.Fini()
-						g.state = 1
-					} else {
-						p.MoveEntity(dx, dy)
-					}
-				}()
-				g.isOnBit(p)
+			switch p.direction {
+			case 1:
+				dy--
+			case 2:
+				dy++
+			case 3:
+				dx--
+			case 4:
+				dx++
 			}
-		}()
+
+			if p.IsPlayerBlocked(gameMap, g.players) {
+				g.screen.Fini()
+				g.state = 1
+			} else {
+				p.MoveEntity(dx, dy)
+			}
+
+			g.isOnBit(p)
+		}
+
 		renderAll(g, DefStyle, gameMap, g.players, g.bits)
 		time.Sleep(g.moveInterval(g.players[0].score))
 	}
-	return nil
 }
 
 func (g *Game) Pause(p *Player) {
 	for g.state == 2 {
-		go handleInput(g, p)
+		go handleInput(g)
 	}
 }
 

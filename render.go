@@ -11,18 +11,19 @@ import (
 var scores string
 
 func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*Player, bits []*Bit) {
-	g.lview.Clear()
-	renderMap(g.lview, gameMap)
+	g.gview.Clear()
+	renderMap(g.gview, gameMap)
 	level := "Level: " + strconv.Itoa(g.level)
-	renderCenterStr(g.lview, MapWidth, MapHeight-2, DefStyle, level)
+	renderCenterStr(g.gview, gameMap.Width, gameMap.Height-2, style, level)
 	for _, player := range g.players {
 		scores = "Score: " + strconv.Itoa(player.score) + " "
 	}
-	renderCenterStr(g.lview, MapWidth, MapHeight, DefStyle, scores)
-	renderBits(g.lview, bits)
-	renderPlayers(g.lview, players)
-	g.sbar.SetCenter(Controls, ControlStyle)
-	g.sbar.Draw()
+	renderCenterStr(g.gview, gameMap.Width, gameMap.Height, style, scores)
+	renderBits(g.gview, bits)
+	renderPlayers(g.gview, players)
+	g.cbar.SetCenter(Controls, ControlStyle)
+	g.screen.Show()
+
 }
 
 func renderMap(v *views.ViewPort, gameMap *GameMap) {
@@ -35,6 +36,11 @@ func renderMap(v *views.ViewPort, gameMap *GameMap) {
 			}
 		}
 	}
+}
+
+func renderMenu(v *views.ViewPort, w, h int, style tcell.Style) {
+	renderCenterStr(v, w, h-4, style, "1 Player")
+	renderCenterStr(v, w, h, style, "2 Player")
 }
 
 func renderEntity(v *views.ViewPort, p *Player) {

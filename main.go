@@ -28,14 +28,13 @@ func main() {
 
 	for {
 		game := &Game{}
-		if err := game.Init(); err != nil {
+		if err := game.InitScreen(); err != nil {
 			fmt.Printf("Failed to initialize game: %v\n", err)
 			os.Exit(1)
 		}
+		game.MainMenu()
+		game.InitGame()
+		game.Run()
 
-		if err := game.Run(); err != nil {
-			fmt.Printf("Failed to run game: %v\n", err)
-			os.Exit(1)
-		}
 	}
 }

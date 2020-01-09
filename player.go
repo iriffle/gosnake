@@ -4,8 +4,16 @@ import (
 	"github.com/gdamore/tcell"
 )
 
+// type Control struct {
+// 	up    rune
+// 	down  rune
+// 	left  rune
+// 	right rune
+// }
+
 type Player struct {
 	Entity
+	//Control
 	name  string
 	score int
 }
