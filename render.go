@@ -8,31 +8,27 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-var scores string
-
-func renderAll(g *Game, style tcell.Style, gameMap *GameMap, players []*Player, bits []*Bit) {
+func renderAll(g *Game, style tcell.Style, m *GameMap, players []*Player, bits []*Bit) {
 	g.gview.Clear()
-	renderMap(g.gview, gameMap)
-	level := "Level: " + strconv.Itoa(g.level)
-	renderCenterStr(g.gview, gameMap.Width, gameMap.Height-2, style, level)
-	for _, player := range g.players {
-		scores = "Score: " + strconv.Itoa(player.score) + " "
+	renderMap(g.gview, m)
+	if g.numPlayers == 1 {
+		renderLevel(g.gview, g.level, m.Width, m.Height, style)
 	}
-	renderCenterStr(g.gview, gameMap.Width, gameMap.Height, style, scores)
+	renderScore(g.gview, g.players, m.Width, m.Height, style)
 	renderBits(g.gview, bits)
 	renderPlayers(g.gview, players)
 	g.cbar.SetCenter(Controls, ControlStyle)
+	g.cbar.Draw()
 	g.screen.Show()
-
 }
 
-func renderMap(v *views.ViewPort, gameMap *GameMap) {
-	for x := 0; x < gameMap.Width; x++ {
-		for y := 0; y < gameMap.Height; y++ {
-			if gameMap.Objects[x][y].blocked == true {
-				renderRune(v, x, y, gameMap.Objects[x][y].style, gameMap.Objects[x][y].char)
+func renderMap(v *views.ViewPort, m *GameMap) {
+	for x := 0; x < m.Width; x++ {
+		for y := 0; y < m.Height; y++ {
+			if m.Objects[x][y].blocked == true {
+				renderRune(v, x, y, m.Objects[x][y].style, m.Objects[x][y].char)
 			} else {
-				renderRune(v, x, y, gameMap.Objects[x][y].style, gameMap.Objects[x][y].char)
+				renderRune(v, x, y, m.Objects[x][y].style, m.Objects[x][y].char)
 			}
 		}
 	}
@@ -41,6 +37,19 @@ func renderMap(v *views.ViewPort, gameMap *GameMap) {
 func renderMenu(v *views.ViewPort, w, h int, style tcell.Style) {
 	renderCenterStr(v, w, h-4, style, "1 Player")
 	renderCenterStr(v, w, h, style, "2 Player")
+}
+
+func renderScore(v *views.ViewPort, players []*Player, w, h int, style tcell.Style) {
+	scores := ""
+	for i, player := range players {
+		scores = player.name + ": " + strconv.Itoa(player.score) + " "
+		renderCenterStr(v, w, h+i, style, scores)
+	}
+}
+
+func renderLevel(v *views.ViewPort, l, w, h int, style tcell.Style) {
+	level := "Level: " + strconv.Itoa(l)
+	renderCenterStr(v, w, h-2, style, level)
 }
 
 func renderEntity(v *views.ViewPort, p *Player) {

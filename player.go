@@ -4,16 +4,8 @@ import (
 	"github.com/gdamore/tcell"
 )
 
-// type Control struct {
-// 	up    rune
-// 	down  rune
-// 	left  rune
-// 	right rune
-// }
-
 type Player struct {
 	Entity
-	//Control
 	name  string
 	score int
 }
@@ -25,6 +17,11 @@ func NewPlayer(x, y, score, direction int, char rune, name string, style tcell.S
 		name,
 		score}
 	return p
+}
+
+func (p *Player) ResetPlayer(x, y, direction int) {
+	p.score = 0
+	p.Entity = NewEntity(x, y, direction, p.pos[0].char, p.pos[0].style)
 }
 
 func (p *Player) CheckPlayerOnBit(bits []*Bit) (bool, int) {

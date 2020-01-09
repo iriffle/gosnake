@@ -17,7 +17,7 @@ func handleInput(g *Game) {
 	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
-		if ev.Key() == tcell.KeyEscape {
+		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyExit {
 			g.screen.Fini()
 			os.Exit(0)
 		}
@@ -26,12 +26,8 @@ func handleInput(g *Game) {
 			g.state = 1
 		}
 		if ev.Key() == tcell.KeyF12 {
-			if g.state == 2 {
-				g.state = 0
-			} else {
-				g.state = 2
-				g.Pause(p)
-			}
+			g.state = 2
+			g.Pause()
 		}
 		if ev.Key() == tcell.KeyUp {
 			if !(p2.direction == 2) {
@@ -72,6 +68,24 @@ func handleInput(g *Game) {
 			if !(p.direction == 3) {
 				p.direction = 4
 			}
+		}
+	}
+}
+
+func handlePause(g *Game) {
+	ev := g.screen.PollEvent()
+	switch ev := ev.(type) {
+	case *tcell.EventKey:
+		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyExit {
+			g.screen.Fini()
+			os.Exit(0)
+		}
+		if ev.Key() == tcell.KeyF1 {
+			g.screen.Fini()
+			g.state = 1
+		}
+		if ev.Key() == tcell.KeyF12 {
+			g.state = 0
 		}
 	}
 }

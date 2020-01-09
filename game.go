@@ -11,8 +11,8 @@ import (
 
 const (
 	// Map values
-	GameWidth  = 90
-	GameHeight = 30
+	GameWidth  = 100
+	GameHeight = 35
 	MapStartX  = 0
 	MapStartY  = 0
 
@@ -144,7 +144,7 @@ func (g *Game) InitGame() {
 		y := (GameHeight / 2) + (i * 2)
 
 		pName := "player"
-		pName = pName + strconv.Itoa(i)
+		pName = pName + strconv.Itoa(i+1)
 
 		pStyle := tcell.StyleDefault.
 			Background(DefBGColor).
@@ -180,8 +180,18 @@ func (g *Game) Run() {
 			}
 
 			if p.IsPlayerBlocked(gameMap, g.players) {
-				g.screen.Fini()
-				g.state = 1
+				if g.numPlayers == 1 {
+					g.screen.Fini()
+					g.state = 1
+				} else {
+					if p.IsPlayerBlockedByPlayer(g.players) {
+						for _, i := range p.pos {
+							b := NewBit(i.ox, i.oy, 10, bitRune, BitStyle)
+							g.bits = append(g.bits, &b)
+						}
+					}
+					p.ResetPlayer(GameWidth/2, GameHeight/2, 3)
+				}
 			} else {
 				p.MoveEntity(dx, dy)
 			}
@@ -194,9 +204,9 @@ func (g *Game) Run() {
 	}
 }
 
-func (g *Game) Pause(p *Player) {
+func (g *Game) Pause() {
 	for g.state == 2 {
-		go handleInput(g)
+		handlePause(g)
 	}
 }
 
