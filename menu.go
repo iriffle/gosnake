@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/gdamore/tcell"
-	"strconv"
 )
 
 type MenuItem struct {
@@ -42,11 +41,10 @@ func NewMenu(items []*MenuItem, defStyle, selStyle tcell.Style) Menu {
 	return m
 }
 
-func NewPlayerMenu(maxPlayers int, defStyle, selStyle tcell.Style) Menu {
+func NewPlayerMenu(menuOptions [3]string, defStyle, selStyle tcell.Style) Menu {
 	var items []*MenuItem
-	for i := 0; i < maxPlayers; i++ {
-		pStr := strconv.Itoa(i+1) + " Player"
-		p := NewMenuItem(MapWidth, MapHeight, pStr, DefStyle)
+	for _, option := range menuOptions {
+		p := NewMenuItem(MapWidth, MapHeight, option, DefStyle)
 		items = append(items, &p)
 	}
 	m := NewMenu(items, defStyle, selStyle)

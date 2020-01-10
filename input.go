@@ -120,14 +120,18 @@ func handleMenu(g *Game, m *Menu) bool {
 			if s > 0 {
 				m.items[s-1].selected = true
 				m.items[s].selected = false
-			} else if ev.Key() == tcell.KeyDown {
-				if s < (len(m.items) - 1) {
-					m.items[s+1].selected = true
-					m.items[s].selected = false
-				}
-			} else if ev.Key() == tcell.KeyEnter {
-				return true
+				m.ChangeSelected()
+				return false
 			}
+		} else if ev.Key() == tcell.KeyDown {
+			if s < (len(m.items) - 1) {
+				m.items[s+1].selected = true
+				m.items[s].selected = false
+				m.ChangeSelected()
+				return false
+			}
+		} else if ev.Key() == tcell.KeyEnter {
+			return true
 		}
 	}
 	return false

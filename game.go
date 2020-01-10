@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	MaxPlayers = 3
 	// Game states
 	Play     = 0
 	Quit     = 1
@@ -52,7 +51,7 @@ const (
 
 var (
 	// Current game map
-	gameMap *GameMap
+	m *GameMap
 
 	// Preset styles
 	DefStyle tcell.Style = tcell.StyleDefault.
@@ -72,7 +71,8 @@ var (
 			Foreground(ScreenFGColor)
 
 	// Text to be displayed at bottom for controls
-	Controls string = "w/s/a/d = up/down/left/right - esc = quit - f1 = restart - f12 = pause"
+	Controls    string = "w/s/a/d = up/down/left/right - esc = quit - f1 = restart - f12 = pause"
+	menuOptions        = [3]string{"1 Player", "2 Player", "High Scores"}
 
 	// Runes to be used on map
 	playerRune rune = '█'
@@ -115,7 +115,7 @@ type Game struct {
 func (g *Game) InitScreen() error {
 	encoding.Register()
 
-	if screen, err := tcell.NewScreen(); err != nil {
+	if screen, err := tcell.NewConsoleScreen(); err != nil {
 		return err
 	} else if err = screen.Init(); err != nil {
 		return err
@@ -128,7 +128,7 @@ func (g *Game) InitScreen() error {
 	if g.screen.HasMouse() {
 		g.screen.EnableMouse()
 	}
-	g.screen.ShowCursor(cviewStartX, cviewStartY)
+	//g.screen.ShowCursor(cviewStartX, cviewStartY)
 	g.screen.Clear()
 	g.gview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
 	g.sview = views.NewViewPort(g.screen, sviewStartX, sviewStartY, sviewWidth, sviewHeight)
@@ -148,24 +148,25 @@ func (g *Game) InitScreen() error {
 
 func (g *Game) MainMenu() {
 	choice := false
-	m := NewPlayerMenu(MaxPlayers, DefStyle, BitStyle)
-	m.SetSelected(1)
+	m := NewPlayerMenu(menuOptions, DefStyle, ScreenStyle)
+	m.SetSelected(0)
+	m.ChangeSelected()
 	for !choice {
 		renderMenu(g, &m, DefStyle)
 		choice = handleMenu(g, &m)
 	}
-	g.numPlayers = m.GetSelected() + 1
+
 }
 
 func (g *Game) InitGame() {
 	g.state = Play
 	g.level = 1
 
-	gameMap = &GameMap{
+	m = &GameMap{
 		Width:  MapWidth,
 		Height: MapHeight,
 	}
-	gameMap.InitLevel1(wallRune, floorRune, DefStyle)
+	m.InitLevel1(wallRune, floorRune, DefStyle)
 
 	g.colors = append(g.colors, tcell.ColorGreen, tcell.ColorRed)
 
@@ -185,13 +186,13 @@ func (g *Game) InitGame() {
 	}
 
 	for i := 0; i < numBits; i++ {
-		b := NewRandomBit(gameMap, 10, bitRune, BitStyle)
+		b := NewRandomBit(m, 10, bitRune, BitStyle)
 		g.bits = append(g.bits, &b)
 	}
 }
 
 func (g *Game) Run() {
-	renderAll(g, DefStyle, gameMap)
+	renderAll(g, DefStyle, m)
 
 	for g.state == Play || g.state == Pause {
 		go handleInput(g)
@@ -216,7 +217,7 @@ func (g *Game) Run() {
 				dx++
 			}
 
-			if p.IsPlayerBlocked(gameMap, g.players) {
+			if p.IsPlayerBlocked(m, g.players) {
 				if g.numPlayers == 1 {
 					g.screen.Fini()
 					g.state = Restart
@@ -236,7 +237,7 @@ func (g *Game) Run() {
 			g.isOnBit(p)
 		}
 
-		renderAll(g, DefStyle, gameMap)
+		renderAll(g, DefStyle, m)
 		if g.state == Play {
 			time.Sleep(g.moveInterval(g.players[0].score))
 		}
@@ -267,7 +268,7 @@ func (g *Game) isOnBit(p *Player) {
 		p.score += b.points
 		p.AddSegment(p.pos[0].char, p.pos[0].style)
 		g.removeBit(i)
-		newB := NewRandomBit(gameMap, 10, bitRune, BitStyle)
+		newB := NewRandomBit(m, 10, bitRune, BitStyle)
 		g.bits = append(g.bits, &newB)
 
 	}
