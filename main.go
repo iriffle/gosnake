@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const Debug bool = true
+
 var (
 	lastGameState  int = Play
 	lastNumPlayers int
@@ -32,7 +34,7 @@ func main() {
 	}
 
 	for {
-		game := &Game{debug: true,
+		game := &Game{debug: Debug,
 			numPlayers: lastNumPlayers}
 		if err := game.InitScreen(); err != nil {
 			fmt.Printf("Failed to initialize game: %v\n", err)

@@ -11,11 +11,18 @@ import (
 )
 
 const (
+	MaxPlayers = 3
+	// Game states
 	Play     = 0
 	Quit     = 1
 	Pause    = 2
 	Restart  = 3
 	MainMenu = 4
+
+	// Game modes
+	Basic    = 0
+	Advanced = 1
+	Battle   = 2
 
 	// Map values
 	MapWidth  = 100
@@ -78,6 +85,14 @@ var (
 
 	// Used for player movement
 	dx, dy int
+
+	// Menu variables
+	p1Str    string = "1 Player"
+	p2Str    string = "2 Player"
+	p1Width  int    = MapWidth
+	p1Height int    = MapHeight - 4
+	p2Width  int    = MapWidth
+	p2Height int    = MapHeight
 )
 
 type Game struct {
@@ -89,10 +104,11 @@ type Game struct {
 	cbar       *views.TextBar
 	players    []*Player
 	bits       []*Bit
+	colors     []tcell.Color
 	state      int
+	mode       int
 	level      int
 	numPlayers int
-	colors     []tcell.Color
 	debug      bool
 }
 
@@ -112,7 +128,7 @@ func (g *Game) InitScreen() error {
 	if g.screen.HasMouse() {
 		g.screen.EnableMouse()
 	}
-	g.screen.ShowCursor(0, 0)
+	g.screen.ShowCursor(cviewStartX, cviewStartY)
 	g.screen.Clear()
 	g.gview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
 	g.sview = views.NewViewPort(g.screen, sviewStartX, sviewStartY, sviewWidth, sviewHeight)
@@ -127,33 +143,18 @@ func (g *Game) InitScreen() error {
 		g.cbar.SetStyle(DebugStyle)
 	}
 
-	BitStyle = BitStyle.Bold(true)
-
 	return nil
 }
 
 func (g *Game) MainMenu() {
-	g.gview.Fill(' ', DefStyle)
-	lastChoice, choice := 1, 1
-	for !(choice == 3) {
-		switch choice {
-		case 1:
-			renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "1 Player")
-			renderCenterStr(g.gview, MapWidth, MapHeight, DefStyle, "2 Player")
-		case 2:
-			renderCenterStr(g.gview, MapWidth, MapHeight-4, DefStyle, "1 Player")
-			renderCenterStr(g.gview, MapWidth, MapHeight, BitStyle, "2 Player")
-		}
-		g.screen.Show()
-		lastChoice = choice
-		choice = handleMenu(g, choice)
+	choice := false
+	m := NewPlayerMenu(MaxPlayers, DefStyle, BitStyle)
+	m.SetSelected(1)
+	for !choice {
+		renderMenu(g, &m, DefStyle)
+		choice = handleMenu(g, &m)
 	}
-	switch lastChoice {
-	case 1:
-		g.numPlayers = 1
-	case 2:
-		g.numPlayers = 2
-	}
+	g.numPlayers = m.GetSelected() + 1
 }
 
 func (g *Game) InitGame() {
@@ -190,7 +191,7 @@ func (g *Game) InitGame() {
 }
 
 func (g *Game) Run() {
-	renderAll(g, DefStyle, gameMap, g.players, g.bits)
+	renderAll(g, DefStyle, gameMap)
 
 	for g.state == Play || g.state == Pause {
 		go handleInput(g)
@@ -198,6 +199,8 @@ func (g *Game) Run() {
 		for _, p := range g.players {
 
 			for g.state == Pause {
+				renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "PAUSED")
+				g.screen.Show()
 				continue
 			}
 
@@ -233,7 +236,7 @@ func (g *Game) Run() {
 			g.isOnBit(p)
 		}
 
-		renderAll(g, DefStyle, gameMap, g.players, g.bits)
+		renderAll(g, DefStyle, gameMap)
 		if g.state == Play {
 			time.Sleep(g.moveInterval(g.players[0].score))
 		}

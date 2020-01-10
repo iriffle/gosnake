@@ -103,7 +103,13 @@ func handlePause(g *Game) {
 	}
 }
 
-func handleMenu(g *Game, choice int) int {
+func handleMenu(g *Game, m *Menu) bool {
+	var s int
+	for i, item := range m.items {
+		if item.selected {
+			s = i
+		}
+	}
 	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
@@ -111,12 +117,18 @@ func handleMenu(g *Game, choice int) int {
 			g.screen.Fini()
 			os.Exit(0)
 		} else if ev.Key() == tcell.KeyUp {
-			return 1
-		} else if ev.Key() == tcell.KeyDown {
-			return 2
-		} else if ev.Key() == tcell.KeyEnter {
-			return 3
+			if s > 0 {
+				m.items[s-1].selected = true
+				m.items[s].selected = false
+			} else if ev.Key() == tcell.KeyDown {
+				if s < (len(m.items) - 1) {
+					m.items[s+1].selected = true
+					m.items[s].selected = false
+				}
+			} else if ev.Key() == tcell.KeyEnter {
+				return true
+			}
 		}
 	}
-	return choice
+	return false
 }
