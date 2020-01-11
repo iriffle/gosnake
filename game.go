@@ -30,28 +30,44 @@ const (
 	MapStartY = 0
 
 	// Control bar values
-	sviewWidth  = MapWidth
-	sviewHeight = 1
-	sviewStartX = 0
-	sviewStartY = MapHeight + 1
+	SViewWidth  = MapWidth
+	SViewHeight = 1
+	SViewStartX = 0
+	SViewStartY = MapHeight + 1
 
-	cviewWidth  = MapWidth
-	cviewHeight = 1
-	cviewStartX = 0
-	cviewStartY = sviewStartY + 2
+	CViewWidth  = MapWidth
+	CViewHeight = 1
+	CViewStartX = 0
+	CViewStartY = SViewStartY + 2
 
 	// Preset colors
-	DefBGColor     tcell.Color = tcell.ColorBlack
-	DefFGColor     tcell.Color = tcell.ColorSteelBlue
-	ScreenBGColor  tcell.Color = tcell.ColorBlack
-	ScreenFGColor  tcell.Color = tcell.ColorWhite
-	Player1FGColor tcell.Color = tcell.ColorGreen
-	BitFGColor     tcell.Color = tcell.ColorWhite
+	DefBGColor    tcell.Color = tcell.ColorBlack
+	DefFGColor    tcell.Color = tcell.ColorSteelBlue
+	ScreenBGColor tcell.Color = tcell.ColorBlack
+	ScreenFGColor tcell.Color = tcell.ColorWhite
+	BitFGColor    tcell.Color = tcell.ColorWhite
 )
 
 var (
 	// Current game map
 	m *GameMap
+
+	// Text to be displayed at bottom for controls
+	Controls     string = "w/s/a/d = up/down/left/right - esc = quit - f1 = restart - f12 = pause"
+	menuOptions         = [3]string{"1 Player", "2 Player", "High Scores"}
+	PlayerColors        = []tcell.Color{tcell.ColorGreen, tcell.ColorRed, tcell.ColorSilver, tcell.ColorAqua}
+
+	// Runes to be used on map
+	playerRune rune = '█'
+	bitRune    rune = '■'
+	wallRune   rune = '▒'
+	floorRune  rune = ' '
+
+	// Number of bits that should be present on map
+	numBits int = 5
+
+	// Used for player movement
+	dx, dy int
 
 	// Preset styles
 	DefStyle tcell.Style = tcell.StyleDefault.
@@ -69,30 +85,6 @@ var (
 	DebugStyle tcell.Style = tcell.StyleDefault.
 			Background(ScreenBGColor).
 			Foreground(ScreenFGColor)
-
-	// Text to be displayed at bottom for controls
-	Controls    string = "w/s/a/d = up/down/left/right - esc = quit - f1 = restart - f12 = pause"
-	menuOptions        = [3]string{"1 Player", "2 Player", "High Scores"}
-
-	// Runes to be used on map
-	playerRune rune = '█'
-	bitRune    rune = '*'
-	wallRune   rune = '▒'
-	floorRune  rune = ' '
-
-	// Number of bits that should be present on map
-	numBits int = 5
-
-	// Used for player movement
-	dx, dy int
-
-	// Menu variables
-	p1Str    string = "1 Player"
-	p2Str    string = "2 Player"
-	p1Width  int    = MapWidth
-	p1Height int    = MapHeight - 4
-	p2Width  int    = MapWidth
-	p2Height int    = MapHeight
 )
 
 type Game struct {
@@ -109,6 +101,8 @@ type Game struct {
 	mode       int
 	level      int
 	numPlayers int
+	fps        int
+	frames     int
 	debug      bool
 }
 
@@ -128,16 +122,16 @@ func (g *Game) InitScreen() error {
 	if g.screen.HasMouse() {
 		g.screen.EnableMouse()
 	}
-	//g.screen.ShowCursor(cviewStartX, cviewStartY)
+	//g.screen.ShowCursor(CViewStartX, CViewStartY)
 	g.screen.Clear()
 	g.gview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
-	g.sview = views.NewViewPort(g.screen, sviewStartX, sviewStartY, sviewWidth, sviewHeight)
+	g.sview = views.NewViewPort(g.screen, SViewStartX, SViewStartY, SViewWidth, SViewHeight)
 	g.sbar = views.NewTextBar()
 	g.sbar.SetView(g.sview)
 	g.sbar.SetStyle(ControlStyle)
 
 	if g.debug {
-		g.cview = views.NewViewPort(g.screen, cviewStartX, cviewStartY, cviewWidth, cviewHeight)
+		g.cview = views.NewViewPort(g.screen, CViewStartX, CViewStartY, CViewWidth, CViewHeight)
 		g.cbar = views.NewTextBar()
 		g.cbar.SetView(g.cview)
 		g.cbar.SetStyle(DebugStyle)
@@ -155,6 +149,16 @@ func (g *Game) MainMenu() {
 		renderMenu(g, &m, DefStyle)
 		choice = handleMenu(g, &m)
 	}
+	i := m.GetSelected()
+	switch i {
+	case 0:
+		g.numPlayers = 1
+	case 1:
+		g.numPlayers = 2
+	case 2:
+		g.screen.Fini()
+		os.Exit(0)
+	}
 
 }
 
@@ -168,7 +172,7 @@ func (g *Game) InitGame() {
 	}
 	m.InitLevel1(wallRune, floorRune, DefStyle)
 
-	g.colors = append(g.colors, tcell.ColorGreen, tcell.ColorRed)
+	g.colors = PlayerColors
 
 	x := MapWidth / 2
 
@@ -184,7 +188,7 @@ func (g *Game) InitGame() {
 		p := NewPlayer(x, y, 0, 3+i, playerRune, pName, pStyle)
 		g.players = append(g.players, &p)
 	}
-
+	g.players[0].score = 0
 	for i := 0; i < numBits; i++ {
 		b := NewRandomBit(m, 10, bitRune, BitStyle)
 		g.bits = append(g.bits, &b)
@@ -195,53 +199,66 @@ func (g *Game) Run() {
 	renderAll(g, DefStyle, m)
 
 	for g.state == Play || g.state == Pause {
+		time.AfterFunc(1*time.Second, func() {
+			g.fps = g.frames
+			g.frames = 0
+		})
 		go handleInput(g)
 
 		for _, p := range g.players {
-
-			for g.state == Pause {
-				renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "PAUSED")
-				g.screen.Show()
-				continue
-			}
-
-			dx, dy = 0, 0
-			switch p.direction {
-			case 1:
-				dy--
-			case 2:
-				dy++
-			case 3:
-				dx--
-			case 4:
-				dx++
-			}
-
-			if p.IsPlayerBlocked(m, g.players) {
-				if g.numPlayers == 1 {
-					g.screen.Fini()
-					g.state = Restart
-				} else {
-					if p.IsPlayerBlockedByPlayer(g.players) {
-						for _, i := range p.pos {
-							b := NewBit(i.ox, i.oy, 10, bitRune, BitStyle)
-							g.bits = append(g.bits, &b)
-						}
-					}
-					p.ResetPlayer(MapWidth/2, MapHeight/2, 3)
+			if p.count == 0 {
+				p.count = p.speed
+				for g.state == Pause {
+					renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "PAUSED")
+					g.screen.Show()
+					continue
 				}
-			} else {
-				p.MoveEntity(dx, dy)
-			}
 
-			g.isOnBit(p)
+				dx, dy = 0, 0
+				switch p.direction {
+				case 1:
+					dy--
+				case 2:
+					dy++
+				case 3:
+					dx--
+				case 4:
+					dx++
+				}
+
+				if p.IsPlayerBlocked(m, g.players) {
+					if g.numPlayers == 1 {
+						g.screen.Fini()
+						g.state = Restart
+					} else {
+						if p.IsPlayerBlockedByPlayer(g.players) {
+							for _, i := range p.pos {
+								b := NewBit(i.ox, i.oy, 10, bitRune, BitStyle)
+								g.bits = append(g.bits, &b)
+							}
+						}
+						p.ResetPlayer(MapWidth/2, MapHeight/2, 3)
+					}
+				} else {
+					p.MoveEntity(dx, dy)
+				}
+
+				g.isOnBit(p)
+			} else {
+				p.count++
+			}
 		}
 
 		renderAll(g, DefStyle, m)
 		if g.state == Play {
 			time.Sleep(g.moveInterval(g.players[0].score))
 		}
+		g.frames++
 	}
+}
+
+func (g *Game) HighScores() {
+	// TODO
 }
 
 func (g *Game) Quit() {
@@ -250,7 +267,10 @@ func (g *Game) Quit() {
 }
 
 func (g *Game) moveInterval(score int) time.Duration {
-	ms := 80 - (score / 10)
+	ms := 80
+	if g.numPlayers == 1 {
+		ms -= (score / 10)
+	}
 	return time.Duration(ms) * time.Millisecond
 }
 

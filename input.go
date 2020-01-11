@@ -78,6 +78,12 @@ func handleInput(g *Game) {
 				p.direction = 4
 			}
 		}
+		if ev.Rune() == 'r' {
+			g.players[0].speed++
+		}
+		if ev.Rune() == 't' {
+			g.players[0].speed--
+		}
 	}
 }
 

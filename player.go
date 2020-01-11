@@ -8,6 +8,8 @@ type Player struct {
 	Entity
 	name  string
 	score int
+	speed int
+	count int
 }
 
 func NewPlayer(x, y, score, direction int, char rune, name string, style tcell.Style) Player {
@@ -15,7 +17,9 @@ func NewPlayer(x, y, score, direction int, char rune, name string, style tcell.S
 	p := Player{
 		e,
 		name,
-		score}
+		score,
+		0,
+		0}
 	return p
 }
 

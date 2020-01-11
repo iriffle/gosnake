@@ -20,7 +20,7 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 	g.sbar.SetCenter(Controls, ControlStyle)
 	g.sbar.Draw()
 	if g.debug {
-		renderConsole(g, cviewWidth, cviewHeight, DebugStyle)
+		renderConsole(g, CViewWidth, CViewHeight, DebugStyle)
 		g.cbar.Draw()
 	}
 	g.screen.Show()
@@ -49,7 +49,7 @@ func renderMenu(g *Game, m *Menu, style tcell.Style) {
 func renderScore(v *views.ViewPort, players []*Player, w, h int, style tcell.Style) {
 	scores := ""
 	for i, player := range players {
-		scores = player.name + ": " + strconv.Itoa(player.score) + " "
+		scores = scores + player.name + ": " + strconv.Itoa(player.score) + " "
 		renderCenterStr(v, w, h+i, style, scores)
 	}
 }

@@ -32,3 +32,17 @@ func NewRandomBit(m *GameMap, points int, char rune, style tcell.Style) Bit {
 	}
 	return b
 }
+
+func (b *Bit) MoveBit(m *GameMap) {
+	randX := rand.Intn(1)
+	randY := rand.Intn(1)
+	randBool := rand.Intn(1)
+	switch randBool {
+	case 0:
+		randX -= (randX * 2)
+	}
+	if !m.Objects[randX][randY].blocked {
+		b.x = randX
+		b.y = randY
+	}
+}
