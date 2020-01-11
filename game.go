@@ -189,6 +189,7 @@ func (g *Game) InitGame() {
 		g.players = append(g.players, &p)
 	}
 	g.players[0].score = 0
+	g.players[0].speed = -5
 	for i := 0; i < numBits; i++ {
 		b := NewRandomBit(m, 10, bitRune, BitStyle)
 		g.bits = append(g.bits, &b)
@@ -267,7 +268,7 @@ func (g *Game) Quit() {
 }
 
 func (g *Game) moveInterval(score int) time.Duration {
-	ms := 80
+	ms := 20
 	if g.numPlayers == 1 {
 		ms -= (score / 10)
 	}
