@@ -200,20 +200,13 @@ func (g *Game) Run() {
 	renderAll(g, DefStyle, m)
 
 	for g.state == Play || g.state == Pause {
-		time.AfterFunc(1*time.Second, func() {
-			g.fps = g.frames
-			g.frames = 0
-		})
+		g.getFPS()
 		go handleInput(g)
+		g.handlePause()
 
 		for _, p := range g.players {
 			if p.count == 0 {
 				p.count = p.speed
-				for g.state == Pause {
-					renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "PAUSED")
-					g.screen.Show()
-					continue
-				}
 
 				dx, dy = 0, 0
 				switch p.direction {
@@ -265,6 +258,21 @@ func (g *Game) HighScores() {
 func (g *Game) Quit() {
 	g.screen.Fini()
 	os.Exit(0)
+}
+
+func (g *Game) handlePause() {
+	for g.state == Pause {
+		renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "PAUSED")
+		g.screen.Show()
+		continue
+	}
+}
+
+func (g *Game) getFPS() {
+	time.AfterFunc(1*time.Second, func() {
+		g.fps = g.frames
+		g.frames = 0
+	})
 }
 
 func (g *Game) moveInterval(score int) time.Duration {
