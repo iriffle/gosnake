@@ -6,6 +6,7 @@ import (
 	"github.com/gdamore/tcell"
 )
 
+// Handle main game input
 func handleInput(g *Game) {
 	var p2 *Player
 	p := g.players[0]
@@ -78,15 +79,10 @@ func handleInput(g *Game) {
 				p.direction = 4
 			}
 		}
-		if ev.Rune() == 'r' {
-			g.players[0].speed++
-		}
-		if ev.Rune() == 't' {
-			g.players[0].speed--
-		}
 	}
 }
 
+// Handle paused game input
 func handlePause(g *Game) {
 	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
@@ -109,6 +105,7 @@ func handlePause(g *Game) {
 	}
 }
 
+// Handle main menu input
 func handleMenu(g *Game, m *Menu) bool {
 	var s int
 	for i, item := range m.items {
