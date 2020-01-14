@@ -16,19 +16,15 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 		renderMap(g.gview, b)
 	}
 	if g.numPlayers == 1 {
-		renderLevel(g.gview, g.level, m.Width, m.Height, style)
+		renderLevel(g.gview, g.level, m.Width, m.Height, SelStyle)
 	}
-	renderScore(g.gview, g.players, m.Width, m.Height, style)
+	renderScore(g.gview, g.players, m.Width, m.Height, SelStyle)
 	renderBits(g.gview, g.bits)
-	renderBits(g.gview, g.bites)
+	renderBites(g.gview, g.bites)
 	renderEntities(g.gview, g.entities)
 	renderPlayers(g.gview, g.players)
-	g.sbar.SetCenter(controls, ControlStyle)
+	g.sbar.SetCenter(controls, SelStyle)
 	g.sbar.Draw()
-	if g.debug {
-		renderConsole(g, CViewWidth, CViewHeight, ConsoleStyle)
-		g.cbar.Draw()
-	}
 	g.screen.Show()
 }
 
@@ -111,9 +107,10 @@ func renderBits(v *views.ViewPort, bits []*Bit) {
 	}
 }
 
-// Render the console
-func renderConsole(g *Game, w, h int, style tcell.Style) {
-	renderCenterStr(g.cview, w, h, style, strconv.Itoa(g.state))
+func renderBites(v *views.ViewPort, bites []*Bite) {
+	for _, bite := range bites {
+		renderRune(v, bite.x, bite.y, bite.style, bite.char)
+	}
 }
 
 // Render a string at given position

@@ -33,13 +33,13 @@ func NewPlayer(x, y, score, direction int, char rune, name string, style tcell.S
 func (p *Player) CheckDirection(g *Game) (int, int) {
 	dx, dy := 0, 0
 	switch p.direction {
-	case 1:
+	case DirUp:
 		dy--
-	case 2:
+	case DirDown:
 		dy++
-	case 3:
+	case DirLeft:
 		dx--
-	case 4:
+	case DirRight:
 		dx++
 	}
 
@@ -85,8 +85,18 @@ func (p *Player) CheckBitPos(bits []*Bit) (bool, int) {
 	return false, i
 }
 
+func (p *Player) CheckBitePos(bites []*Bite) (bool, int) {
+	i := 0
+	for i, bite := range bites {
+		if p.pos[0].x == bite.x && p.pos[0].y == bite.y {
+			return true, i
+		}
+	}
+	return false, i
+}
+
 func (p *Player) IsOnBite(g *Game, m *GameMap) {
-	onBite, i := p.CheckBitPos(g.bites)
+	onBite, i := p.CheckBitePos(g.bites)
 	if onBite {
 		b := g.bites[i]
 		p.score += 50

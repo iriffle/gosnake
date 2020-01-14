@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/gdamore/tcell"
 )
 
@@ -40,43 +38,43 @@ func handleInput(g *Game) {
 		}
 
 		if ev.Key() == tcell.KeyUp {
-			if !(p2.direction == 2) {
-				p2.direction = 1
+			if !(p2.direction == DirDown) {
+				p2.direction = DirUp
 			}
 		}
 		if ev.Key() == tcell.KeyDown {
-			if !(p2.direction == 1) {
-				p2.direction = 2
+			if !(p2.direction == DirUp) {
+				p2.direction = DirDown
 			}
 		}
 		if ev.Key() == tcell.KeyLeft {
-			if !(p2.direction == 4) {
-				p2.direction = 3
+			if !(p2.direction == DirRight) {
+				p2.direction = DirLeft
 			}
 		}
 		if ev.Key() == tcell.KeyRight {
-			if !(p2.direction == 3) {
-				p2.direction = 4
+			if !(p2.direction == DirLeft) {
+				p2.direction = DirRight
 			}
 		}
 		if ev.Rune() == 'w' {
-			if !(p.direction == 2) {
-				p.direction = 1
+			if !(p.direction == DirDown) {
+				p.direction = DirUp
 			}
 		}
 		if ev.Rune() == 's' {
-			if !(p.direction == 1) {
-				p.direction = 2
+			if !(p.direction == DirUp) {
+				p.direction = DirDown
 			}
 		}
 		if ev.Rune() == 'a' {
-			if !(p.direction == 4) {
-				p.direction = 3
+			if !(p.direction == DirRight) {
+				p.direction = DirLeft
 			}
 		}
 		if ev.Rune() == 'd' {
-			if !(p.direction == 3) {
-				p.direction = 4
+			if !(p.direction == DirLeft) {
+				p.direction = DirRight
 			}
 		}
 	}
@@ -106,7 +104,7 @@ func handlePause(g *Game) {
 }
 
 // Handle main menu input
-func handleMenu(g *Game, m *Menu) bool {
+func handleMenuInput(g *Game, m *Menu) int {
 	var s int
 	for i, item := range m.items {
 		if item.selected {
@@ -117,25 +115,25 @@ func handleMenu(g *Game, m *Menu) bool {
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
 		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyExit {
-			g.screen.Fini()
-			os.Exit(0)
+			g.state = Quit
+			return -1
 		} else if ev.Key() == tcell.KeyUp {
 			if s > 0 {
 				m.items[s-1].selected = true
 				m.items[s].selected = false
 				m.ChangeSelected()
-				return false
+				return 0
 			}
 		} else if ev.Key() == tcell.KeyDown {
 			if s < (len(m.items) - 1) {
 				m.items[s+1].selected = true
 				m.items[s].selected = false
 				m.ChangeSelected()
-				return false
+				return 0
 			}
 		} else if ev.Key() == tcell.KeyEnter {
-			return true
+			return 1
 		}
 	}
-	return false
+	return 0
 }
