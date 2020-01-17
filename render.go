@@ -23,7 +23,7 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 	renderBites(g.gview, g.bites)
 	renderEntities(g.gview, g.entities)
 	renderPlayers(g.gview, g.players)
-	g.sbar.SetCenter(controls, SelStyle)
+	g.sbar.SetCenter(controls, DefStyle)
 	g.sbar.Draw()
 	g.screen.Show()
 }

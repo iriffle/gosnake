@@ -119,7 +119,7 @@ func NewBite(m *GameMap, x, y, points, dir, state int, char rune, style tcell.St
 	return bite
 }
 
-func NewRandomBite(m *GameMap, style tcell.Style) Bite {
+func NewRandomBite(m *GameMap, style tcell.Style, random bool) Bite {
 	var (
 		bite Bite
 		dir  int
@@ -127,21 +127,26 @@ func NewRandomBite(m *GameMap, style tcell.Style) Bite {
 	)
 
 	for {
-		randDir := rand.Intn(4)
-		switch randDir {
-		case DirUp:
-			dir = DirUp
-			char = BiteUpRune
-		case DirDown:
-			dir = DirDown
-			char = BiteDownRune
-		case DirLeft:
-			dir = DirLeft
-			char = BiteLeftRune
-		case DirRight:
-			dir = DirRight
-			char = BiteRightRune
-		case DirAll:
+		if random {
+			randDir := rand.Intn(4)
+			switch randDir {
+			case DirUp:
+				dir = DirUp
+				char = BiteUpRune
+			case DirDown:
+				dir = DirDown
+				char = BiteDownRune
+			case DirLeft:
+				dir = DirLeft
+				char = BiteLeftRune
+			case DirRight:
+				dir = DirRight
+				char = BiteRightRune
+			case DirAll:
+				dir = DirAll
+				char = BiteAllRune
+			}
+		} else {
 			dir = DirAll
 			char = BiteAllRune
 		}

@@ -49,13 +49,14 @@ func (m *GameMap) InitLevel2(g *Game) {
 }
 
 func (m *GameMap) InitLevel3(g *Game) {
-	go m.RandomBites(g, 1, 3, (20 * time.Second))
+	go m.RandomBites(g, 1, 3, (20 * time.Second), false)
 }
 
 func (m *GameMap) RandomLines(g *Game, numTimes int) {
-	for i := 0; i < numTimes; i++ {
+	//for i := 0; i < numTimes; i++ {
+	for {
 		NewRandomBitLine(g, m, 10, BitRune, BitStyle)
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * time.Second)
 	}
 }
 
@@ -72,11 +73,11 @@ func (m *GameMap) RandomBits(g *Game, bitsGen, bitsMax int, dur time.Duration) {
 	}
 }
 
-func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration) {
+func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration, random bool) {
 	for {
 		for i := 0; i < bitesGen; i++ {
 			if len(g.bites)-bitesGen < bitesMax {
-				newB := NewRandomBite(m, BiteStyle)
+				newB := NewRandomBite(m, BiteStyle, random)
 				g.bites = append(g.bites, &newB)
 			}
 		}

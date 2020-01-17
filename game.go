@@ -366,12 +366,12 @@ func (g *Game) handleBits(m *GameMap) {
 func (g *Game) handleLevel(m *GameMap) {
 	for _, p := range g.players {
 		switch p.score {
-		case 20:
+		case 200:
 			if g.level < 2 {
 				m.InitLevel2(g)
 				g.level = 2
 			}
-		case 40:
+		case 400:
 			if g.level < 3 {
 				m.InitLevel3(g)
 				g.level = 3
@@ -390,12 +390,12 @@ func (g *Game) getFPS() {
 
 // Calculate speed of player
 func (g *Game) moveInterval(speed, direction int) time.Duration {
-	ms := 120
+	ms := 80 //120
 	switch direction {
-	case 1, 2:
-		ms = 180
+	case DirUp, DirDown:
+		ms = 140 //180
 	}
-	ms -= (speed / 100)
+	//ms -= (speed / 100)
 	return time.Duration(ms) * time.Millisecond
 }
 
