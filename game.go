@@ -294,17 +294,14 @@ func (g *Game) handlePause() {
 				p.ch <- true
 				chQuit = true
 			}
-			g.bitQuit <- true
 		}
 		renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "PAUSED")
 		g.screen.Show()
 
 		if g.state == Play {
 			for _, p := range g.players {
-				//p.ch = make(chan bool)
 				go g.handlePlayer(p)
 			}
-			//bitQuit := make(chan bool)
 			go g.handleBits(m)
 		}
 	}
