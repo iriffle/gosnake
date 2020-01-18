@@ -8,13 +8,15 @@ import (
 type Entity struct {
 	pos       []Object
 	direction int
+	speed     int
 }
 
 // Create a new Entity
-func NewEntity(x, y, direction int, char rune, style tcell.Style) Entity {
+func NewEntity(x, y, direction, speed int, char rune, style tcell.Style) Entity {
 	o := NewObject(x, y, char, style, true)
 	e := Entity{
 		direction: direction,
+		speed:     speed,
 	}
 	e.pos = append(e.pos, o)
 	return e
@@ -40,10 +42,37 @@ func (e *Entity) Move(dx, dy int) {
 	}
 }
 
+// Get Entity's current direction and return dx, dy
+// in order to change Entity's movement if change necessary
+func (e *Entity) CheckDirection(g *Game) (int, int) {
+	dx, dy := 0, 0
+	switch e.direction {
+	case DirUp:
+		dy--
+	case DirDown:
+		dy++
+	case DirLeft:
+		dx--
+	case DirRight:
+		dx++
+	}
+
+	return dx, dy
+}
+
 // Add a segment to the entity
 func (e *Entity) AddSegment(char rune, style tcell.Style) {
 	x := e.pos[len(e.pos)-1].ox
 	y := e.pos[len(e.pos)-1].oy
 	o := NewObject(x, y, char, style, true)
 	e.pos = append(e.pos, o)
+}
+
+// Check if player is blocked by an object on the map
+func (e *Entity) IsBlockedByMap(m *GameMap, dx, dy int) bool {
+	if m.Objects[e.pos[0].x+dx][e.pos[0].y+dy].blocked {
+		return true
+	} else {
+		return false
+	}
 }

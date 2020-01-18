@@ -313,7 +313,7 @@ func (g *Game) handlePlayer(p *Player) {
 		select {
 		default:
 			dx, dy := p.CheckDirection(g)
-			if p.IsBlocked(m, g.maps, g.players) {
+			if p.IsBlocked(m, g.maps, g.players, dx, dy) {
 				if g.numPlayers > 1 {
 					//if p.IsBlockedByPlayer(g.players) {
 					for _, i := range p.pos {

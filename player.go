@@ -12,38 +12,18 @@ type Player struct {
 	name  string
 	score int
 	count int
-	speed int
 	ch    chan bool
 }
 
 // Make a new player
 func NewPlayer(x, y, score, direction int, char rune, name string, style tcell.Style) Player {
-	e := NewEntity(x, y, direction, char, style)
+	e := NewEntity(x, y, direction, 1, char, style)
 	p := Player{
 		Entity: e,
 		name:   name,
 		score:  score,
-		speed:  1,
 	}
 	return p
-}
-
-// Get player's current direction and return dx, dy
-// in order to change player's movement if change necessary
-func (p *Player) CheckDirection(g *Game) (int, int) {
-	dx, dy := 0, 0
-	switch p.direction {
-	case DirUp:
-		dy--
-	case DirDown:
-		dy++
-	case DirLeft:
-		dx--
-	case DirRight:
-		dx++
-	}
-
-	return dx, dy
 }
 
 // Reset player's score and set back to middle of screen
@@ -51,7 +31,7 @@ func (p *Player) Reset(x, y, direction int) {
 	style := p.pos[0].style
 	p.Kill()
 	p.score = 0
-	p.Entity = NewEntity(x, y, direction, p.pos[0].char, p.pos[0].style)
+	p.Entity = NewEntity(x, y, direction, 1, p.pos[0].char, p.pos[0].style)
 	p.pos[0].style = style
 }
 
@@ -108,18 +88,18 @@ func (p *Player) IsOnBite(g *Game, m *GameMap) {
 }
 
 // Check if player is blocked
-func (p *Player) IsBlocked(m *GameMap, bites []*GameMap, players []*Player) bool {
-	if p.IsBlockedByPlayer(players) {
+func (p *Player) IsBlocked(m *GameMap, bites []*GameMap, players []*Player, dx, dy int) bool {
+	if p.IsBlockedByPlayer(players, dx, dy) {
 		return true
 	}
-	if p.IsBlockedBySelf() {
+	if p.IsBlockedBySelf(dx, dy) {
 		return true
 	}
-	if p.IsBlockedByMap(m) {
+	if p.IsBlockedByMap(m, dx, dy) {
 		return true
 	}
 	for _, bite := range bites {
-		if p.IsBlockedByMap(bite) {
+		if p.IsBlockedByMap(bite, dx, dy) {
 			return true
 		}
 	}
@@ -127,9 +107,9 @@ func (p *Player) IsBlocked(m *GameMap, bites []*GameMap, players []*Player) bool
 }
 
 // Check if player is blocked by its own body
-func (p *Player) IsBlockedBySelf() bool {
+func (p *Player) IsBlockedBySelf(dx, dy int) bool {
 	for a, i := range p.pos {
-		if p.pos[0].x == i.x && p.pos[0].y == i.y && !(a == 0) {
+		if p.pos[0].x+dx == i.x && p.pos[0].y+dy == i.y && !(a == 0) {
 			return true
 		}
 	}
@@ -137,10 +117,10 @@ func (p *Player) IsBlockedBySelf() bool {
 }
 
 // Check if player is blocked by another player
-func (p *Player) IsBlockedByPlayer(players []*Player) bool {
+func (p *Player) IsBlockedByPlayer(players []*Player, dx, dy int) bool {
 	for _, player := range players {
 		for _, i := range player.pos {
-			if p.pos[0].x == i.x && p.pos[0].y == i.y && !(p.name == player.name) {
+			if p.pos[0].x+dx == i.x && p.pos[0].y+dy == i.y && !(p.name == player.name) {
 				return true
 			}
 		}
@@ -148,24 +128,15 @@ func (p *Player) IsBlockedByPlayer(players []*Player) bool {
 	return false
 }
 
-func (p *Player) IsBlockedByEntity(entities []*Entity, players []*Player) bool {
+func (p *Player) IsBlockedByEntity(entities []*Entity, players []*Player, dx, dy int) bool {
 	for _, p := range players {
 		for _, entity := range entities {
 			for _, i := range entity.pos {
-				if p.pos[0].x == i.x && p.pos[0].y == i.y && i.blocked {
+				if p.pos[0].x+dx == i.x && p.pos[0].y+dy == i.y && i.blocked {
 					return true
 				}
 			}
 		}
 	}
 	return false
-}
-
-// Check if player is blocked by an object on the map
-func (p *Player) IsBlockedByMap(m *GameMap) bool {
-	if m.Objects[p.pos[0].x][p.pos[0].y].blocked {
-		return true
-	} else {
-		return false
-	}
 }

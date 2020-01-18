@@ -41,6 +41,7 @@ func (m *GameMap) InitMapBoundary(wallRune, floorRune rune, style tcell.Style) {
 func (m *GameMap) InitLevel1(g *Game) {
 	go m.RandomBits(g, 2, 10, 3*time.Second)
 	go m.RandomLines(g, 2)
+	go m.MovingWalls(g, m.Width/4, m.Height/2, 0, 1, 5, WallRune, DefStyle)
 }
 
 func (m *GameMap) InitLevel2(g *Game) {
@@ -50,6 +51,10 @@ func (m *GameMap) InitLevel2(g *Game) {
 
 func (m *GameMap) InitLevel3(g *Game) {
 	go m.RandomBites(g, 1, 3, (20 * time.Second), false)
+}
+
+func (m *GameMap) InitLevel4(g *Game) {
+	go m.MovingWalls(g, m.Width/4, m.Height/2, 0, 1, 5, WallRune, DefStyle)
 }
 
 func (m *GameMap) RandomLines(g *Game, numTimes int) {
@@ -82,5 +87,36 @@ func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration
 			}
 		}
 		time.Sleep(dur)
+	}
+}
+
+func (m *GameMap) MovingWalls(g *Game, x, y, direction, speed, segments int, char rune, style tcell.Style) {
+	e := NewEntity(x, y, direction, speed, char, style)
+	for i := 0; i < segments; i++ {
+		e.AddSegment(char, style)
+	}
+	g.entities = append(g.entities, &e)
+	for {
+		dx, dy := e.CheckDirection(g)
+		if e.IsBlockedByMap(m, dx, dy) {
+			var newPos []Object
+			for i, _ := range e.pos {
+				newPos = append(newPos, e.pos[len(e.pos)-1-i])
+			}
+			e.pos = newPos
+			switch e.direction {
+			case DirUp:
+				e.direction = DirDown
+			case DirDown:
+				e.direction = DirUp
+			case DirLeft:
+				e.direction = DirRight
+			case DirRight:
+				e.direction = DirLeft
+			}
+		} else {
+			e.Move(dx, dy)
+		}
+		time.Sleep(g.moveInterval(e.speed, e.direction))
 	}
 }
