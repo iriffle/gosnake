@@ -41,7 +41,6 @@ func (m *GameMap) InitMapBoundary(wallRune, floorRune rune, style tcell.Style) {
 func (m *GameMap) InitLevel1(g *Game) {
 	go m.RandomBits(g, 2, 10, 3*time.Second)
 	go m.RandomLines(g, 2)
-	go m.MovingWalls(g, m.Width/4, m.Height/2, 0, 1, 5, WallRune, DefStyle)
 }
 
 func (m *GameMap) InitLevel2(g *Game) {
@@ -54,7 +53,8 @@ func (m *GameMap) InitLevel3(g *Game) {
 }
 
 func (m *GameMap) InitLevel4(g *Game) {
-	go m.MovingWalls(g, m.Width/4, m.Height/2, 0, 1, 5, WallRune, DefStyle)
+	go m.MovingWall(g, m.Width/2, m.Height/4, 2, 1, 10, WallRune, DefStyle)
+	go m.MovingWall(g, m.Width/2, (m.Height - m.Height/4), 3, 1, 10, WallRune, DefStyle)
 }
 
 func (m *GameMap) RandomLines(g *Game, numTimes int) {
@@ -90,7 +90,7 @@ func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration
 	}
 }
 
-func (m *GameMap) MovingWalls(g *Game, x, y, direction, speed, segments int, char rune, style tcell.Style) {
+func (m *GameMap) MovingWall(g *Game, x, y, direction, speed, segments int, char rune, style tcell.Style) {
 	e := NewEntity(x, y, direction, speed, char, style)
 	for i := 0; i < segments; i++ {
 		e.AddSegment(char, style)

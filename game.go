@@ -313,7 +313,7 @@ func (g *Game) handlePlayer(p *Player) {
 		select {
 		default:
 			dx, dy := p.CheckDirection(g)
-			if p.IsBlocked(m, g.maps, g.players, dx, dy) {
+			if p.IsBlocked(m, g.maps, g.entities, g.players, dx, dy) {
 				if g.numPlayers > 1 {
 					//if p.IsBlockedByPlayer(g.players) {
 					for _, i := range p.pos {
@@ -372,6 +372,11 @@ func (g *Game) handleLevel(m *GameMap) {
 			if g.level < 3 {
 				m.InitLevel3(g)
 				g.level = 3
+			}
+		case 600:
+			if g.level < 4 {
+				m.InitLevel4(g)
+				g.level = 4
 			}
 		}
 	}

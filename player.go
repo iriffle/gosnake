@@ -88,7 +88,7 @@ func (p *Player) IsOnBite(g *Game, m *GameMap) {
 }
 
 // Check if player is blocked
-func (p *Player) IsBlocked(m *GameMap, bites []*GameMap, players []*Player, dx, dy int) bool {
+func (p *Player) IsBlocked(m *GameMap, bites []*GameMap, entities []*Entity, players []*Player, dx, dy int) bool {
 	if p.IsBlockedByPlayer(players, dx, dy) {
 		return true
 	}
@@ -96,6 +96,9 @@ func (p *Player) IsBlocked(m *GameMap, bites []*GameMap, players []*Player, dx, 
 		return true
 	}
 	if p.IsBlockedByMap(m, dx, dy) {
+		return true
+	}
+	if p.IsBlockedByEntity(entities, players, dx, dy) {
 		return true
 	}
 	for _, bite := range bites {

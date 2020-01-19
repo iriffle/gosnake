@@ -73,7 +73,7 @@ func NewRandomBit(m *GameMap, points int, char rune, style tcell.Style) Bit {
 // Generate random coordinates for a Bit
 func NewRandomBitLine(g *Game, m *GameMap, points int, char rune, style tcell.Style) {
 	for {
-		randNum := rand.Intn(6)
+		randNum := rand.Intn(6) + 2
 		randDir := randBool()
 		randX := rand.Intn(m.Width)
 		randY := rand.Intn(m.Height)
@@ -189,11 +189,14 @@ func (b *Bite) ExplodeBite(g *Game, m *GameMap) {
 	i := len(g.maps) - 1
 	g.maps[i] = emptyMap
 	g.maps = g.maps[:len(g.maps)-1]
-	b = &Bite{}
-	i = len(g.bites) - 1
-	g.bites[i] = b
-	g.bites = g.bites[:len(g.bites)-1]
-
+	for i, bite := range g.bites {
+		if b.x == bite.x && b.y == bite.y {
+			newB := &Bite{}
+			g.bites[i] = g.bites[len(g.bites)-1]
+			g.bites[len(g.bites)-1] = newB
+			g.bites = g.bites[:len(g.bites)-1]
+		}
+	}
 }
 
 func (b *Bite) ExplodeXRight(biteMap, m *GameMap) {
