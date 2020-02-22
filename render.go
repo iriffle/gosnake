@@ -2,6 +2,7 @@ package main
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/views"
@@ -48,6 +49,30 @@ func renderMenu(g *Game, m *Menu, style tcell.Style) {
 		renderStr(g.gview, item.x, item.y, item.style, item.str)
 	}
 	g.screen.Show()
+}
+
+func renderHighScores(g *Game, style tcell.Style) error {
+	g.gview.Clear()
+	g.gview.Fill(' ', style)
+	renderCenterStr(g.gview, MapWidth, 4, style, "High Scores")
+	renderCenterStr(g.gview, MapWidth, 6, style, strings.Repeat("=", MapWidth-10))
+	renderCenterStr(g.gview, MapWidth, 10, style, "1 Player:")
+
+	lastScorePos := 14
+	for pCount := 1; pCount < 3; pCount++ {
+		for i, score := range g.scores {
+			s, err := strconv.Atoi(score[0])
+			if err != nil {
+				return err
+			}
+			if s == pCount {
+				renderCenterStr(g.gview, MapWidth, lastScorePos+i, style, (score[1] + ": " + score[2]))
+			}
+			lastScorePos++
+		}
+	}
+	g.screen.Show()
+	return nil
 }
 
 // Render the player scores

@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -11,6 +10,9 @@ import (
 )
 
 var (
+	// Saved high score file
+	scoreFile = "hs.dat"
+
 	lastGameState  int = Play
 	lastNumPlayers int
 )
@@ -27,9 +29,13 @@ func main() {
 
 	// Set logging
 	if logfile != "" {
-		if f, e := os.Create(logfile); e == nil {
-			log.SetOutput(f)
+		f, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_WRONLY, 0666)
+		if err != nil {
+			//if f, e := os.Create(logfile); e == nil {
+			log.Fatalf("Error opening log file")
+			//}
 		}
+		defer f.Close()
 	} else {
 		log.SetOutput(ioutil.Discard)
 	}
@@ -37,10 +43,10 @@ func main() {
 	// Game loop
 	for {
 		// Create game
-		game := &Game{numPlayers: lastNumPlayers}
+		game := &Game{numPlayers: lastNumPlayers, scoreFile: scoreFile}
 		// Initialize screen
 		if err := game.InitScreen(); err != nil {
-			fmt.Printf("Failed to initialize game: %v\n", err)
+			log.Println("Failed to initialize game: %v\n", err)
 			os.Exit(1)
 		}
 		// Open main menu

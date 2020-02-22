@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
+	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gdamore/tcell"
@@ -20,6 +24,7 @@ const (
 )
 
 const (
+	// Menu pages
 	MenuMain     = iota
 	MenuPlayer   = iota
 	MenuMode     = iota
@@ -59,6 +64,9 @@ const (
 	CViewHeight = 1
 	CViewStartX = 0
 	CViewStartY = SViewStartY + 2
+
+	// High Score count
+	MaxHighScores = 5
 
 	// Preset colors
 	Black   = tcell.ColorBlack
@@ -138,6 +146,8 @@ type Game struct {
 	fps        int
 	frames     int
 	bitQuit    chan bool
+	scores     [][]string
+	scoreFile  string
 }
 
 // Initialize the screen and set views/bars and styles
@@ -170,7 +180,9 @@ func (g *Game) InitScreen() error {
 func (g *Game) MainMenu() {
 	g.state = MainMenu
 	cMenu := MenuMain
+	g.readScores()
 	for g.state != Play {
+		// Main menu
 		if cMenu == MenuMain {
 			i := g.handleMenu(mainOptions)
 			switch i {
@@ -179,8 +191,11 @@ func (g *Game) MainMenu() {
 				os.Exit(0)
 			case 0:
 				cMenu = MenuPlayer
+			case 1:
+				cMenu = MenuScore
 			}
 		}
+		// Player number menu
 		if cMenu == MenuPlayer {
 			i := g.handleMenu(playerOptions)
 			switch i {
@@ -196,8 +211,22 @@ func (g *Game) MainMenu() {
 				break
 			}
 		}
+		// High score screen
+		for cMenu == MenuScore {
+			err := renderHighScores(g, DefStyle)
+			if err != nil {
+				log.Println(err)
+			}
+			ev := g.screen.PollEvent()
+			switch ev := ev.(type) {
+			case *tcell.EventKey:
+				if ev.Key() == tcell.KeyEscape {
+					cMenu = MenuMain
+					break
+				}
+			}
+		}
 	}
-
 }
 
 // Initialize game
@@ -219,6 +248,7 @@ func (g *Game) InitGame() {
 
 	x := MapWidth / 2
 
+	// Create a player for selected number of players
 	for i := 0; i < g.numPlayers; i++ {
 		y := (MapHeight / 2) + (i * 2)
 
@@ -228,7 +258,7 @@ func (g *Game) InitGame() {
 		pStyle := tcell.StyleDefault.
 			Background(DefBGStyle).
 			Foreground(g.colors[i])
-		p := NewPlayer(x, y, 0, 3+i, PlayerRune, pName, pStyle)
+		p := NewPlayer(x, y, 0, (DirLeft - i), PlayerRune, pName, pStyle)
 		g.players = append(g.players, &p)
 	}
 	g.players[0].score = 0
@@ -236,6 +266,7 @@ func (g *Game) InitGame() {
 		b := NewRandomBit(m, 10, BitRune, BitStyle)
 		g.bits = append(g.bits, &b)
 	}
+	log.Println("Initialized game with ", strconv.Itoa(g.numPlayers), " players.")
 }
 
 // Run main game loop
@@ -321,9 +352,19 @@ func (g *Game) handlePlayer(p *Player) {
 						g.bits = append(g.bits, &b)
 					}
 					//}
+					g.readScores()
+					scoreChange := g.checkScores()
+					if scoreChange {
+						g.writeScores()
+					}
 					p.Reset(MapWidth/2, MapHeight/2, 3)
 				} else {
 					p.Kill()
+					g.readScores()
+					scoreChange := g.checkScores()
+					if scoreChange {
+						g.writeScores()
+					}
 					time.Sleep(100 * time.Millisecond)
 					g.screen.Fini()
 					g.state = Restart
@@ -367,19 +408,128 @@ func (g *Game) handleLevel(m *GameMap) {
 			if g.level < 2 {
 				m.InitLevel2(g)
 				g.level = 2
+				log.Println(p.name + " reached level 2!")
 			}
 		case 400:
 			if g.level < 3 {
 				m.InitLevel3(g)
 				g.level = 3
+				log.Println(p.name + " reached level 3!")
 			}
 		case 600:
 			if g.level < 4 {
 				m.InitLevel4(g)
 				g.level = 4
+				log.Println(p.name + " reached level 4!")
 			}
 		}
 	}
+}
+
+func (g *Game) readScores() {
+	g.scores = nil
+	f, err := os.Open(g.scoreFile)
+	if err != nil {
+		f, err := os.Create(g.scoreFile)
+		if err != nil {
+			log.Println(err, f)
+		}
+	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		score := strings.Split(s.Text(), ":")
+		g.scores = append(g.scores, score)
+	}
+	err = s.Err()
+	if err != nil {
+		//log.Fatal(err)
+		log.Println(err)
+	}
+}
+
+func (g *Game) writeScores() {
+	f, err := os.OpenFile(g.scoreFile, os.O_CREATE, 0660)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			//log.Fatal(err)
+			fmt.Println(err)
+		}
+	}()
+	for _, v := range g.scores {
+		_, err := fmt.Fprintln(f, strings.Join(v[:], ":"))
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func (g *Game) checkScores() bool {
+	scoreChange := false
+	var newScores [][]string
+	if g.scores != nil {
+		for _, p := range g.players {
+			for i, s := range g.scores {
+				scoreStr, err := strconv.Atoi(s[2])
+				if err != nil {
+					log.Println(err)
+				}
+				numPlayers, err := strconv.Atoi(s[0])
+				if err != nil {
+					log.Println(err)
+				}
+				if p.score > scoreStr && numPlayers == g.numPlayers {
+					var newScore []string
+					scoreChange = true
+					newScore = append(newScore, strconv.Itoa(g.numPlayers), p.name, strconv.Itoa(p.score))
+					for a := 0; a < i; a++ {
+						newScores = append(newScores, g.scores[a])
+					}
+					newScores = append(newScores, newScore)
+					if i <= len(g.scores)-1 {
+						for a := i; a < len(g.scores); a++ {
+							newScores = append(newScores, g.scores[a])
+						}
+					}
+					break
+				} else if len(g.scores) < MaxHighScores && numPlayers == g.numPlayers {
+					var newScore []string
+					scoreChange = true
+					newScore = append(newScore, strconv.Itoa(g.numPlayers), p.name, strconv.Itoa(p.score))
+					newScores = append(g.scores, newScore)
+					break
+				}
+			}
+		}
+		if scoreChange {
+			g.scores = nil
+			if len(newScores) > MaxHighScores {
+				for i := 0; i < MaxHighScores; i++ {
+					g.scores = append(g.scores, newScores[i])
+				}
+			} else {
+				for i := 0; i < len(newScores); i++ {
+					g.scores = append(g.scores, newScores[i])
+				}
+			}
+		}
+	} else {
+		for _, p := range g.players {
+			var newScore []string
+			scoreChange = true
+			newScore = append(newScore, strconv.Itoa(g.numPlayers), p.name, strconv.Itoa(p.score))
+			g.scores = append(g.scores, newScore)
+		}
+	}
+	return scoreChange
 }
 
 // Calculate FPS
