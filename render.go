@@ -42,7 +42,7 @@ func renderMap(v *views.ViewPort, m *GameMap) {
 	}
 }
 
-// Render the main menu
+// Render a menu
 func renderMenu(g *Game, m *Menu, style tcell.Style) {
 	g.gview.Fill(' ', style)
 	for _, item := range m.items {
@@ -51,31 +51,33 @@ func renderMenu(g *Game, m *Menu, style tcell.Style) {
 	g.screen.Show()
 }
 
-func renderHighScores(g *Game, style tcell.Style) error {
+// Render the High Score screen
+func renderHighScoreScreen(g *Game, style tcell.Style) {
 	g.gview.Clear()
 	g.gview.Fill(' ', style)
 	renderCenterStr(g.gview, MapWidth, 4, style, "High Scores")
 	renderCenterStr(g.gview, MapWidth, 6, style, strings.Repeat("=", MapWidth-10))
 	renderCenterStr(g.gview, MapWidth, 10, style, "1 Player:")
+	renderHighScores(g, g.scores, style, 14)
+	renderCenterStr(g.gview, MapWidth, 16+MaxHighScores*2, style, "2 Player:")
+	renderHighScores(g, g.scores2, style, 20+MaxHighScores*2)
 
-	lastScorePos := 14
-	for pCount := 1; pCount < 3; pCount++ {
-		for i, score := range g.scores {
-			s, err := strconv.Atoi(score[0])
-			if err != nil {
-				return err
-			}
-			if s == pCount {
-				renderCenterStr(g.gview, MapWidth, lastScorePos+i, style, (score[1] + ": " + score[2]))
-			}
-			lastScorePos++
-		}
-	}
 	g.screen.Show()
-	return nil
 }
 
-// Render the player scores
+// Render a list of scores for the high score screen
+func renderHighScores(g *Game, scores [][]string, style tcell.Style, lastScorePos int) {
+	for i := 0; i < MaxHighScores; i++ {
+		if i < len(scores) {
+			renderCenterStr(g.gview, MapWidth, lastScorePos+i, style, (scores[i][1] + " - " + scores[i][2]))
+		} else {
+			renderCenterStr(g.gview, MapWidth, lastScorePos+i, style, "----")
+		}
+		lastScorePos++
+	}
+}
+
+// Render the player scores in middle of screen
 func renderScore(v *views.ViewPort, players []*Player, w, h int, style tcell.Style) {
 	scores := ""
 	for i, player := range players {
@@ -84,13 +86,13 @@ func renderScore(v *views.ViewPort, players []*Player, w, h int, style tcell.Sty
 	}
 }
 
-// Render the current level
+// Render the current level in middle of screen
 func renderLevel(v *views.ViewPort, l, w, h int, style tcell.Style) {
 	level := "level: " + strconv.Itoa(l)
 	renderCenterStr(v, w, h-2, style, level)
 }
 
-// Render an entity
+// Render a Player
 func renderPlayer(v *views.ViewPort, p *Player) {
 	for _, pos := range p.pos {
 		var comb []rune
@@ -98,10 +100,9 @@ func renderPlayer(v *views.ViewPort, p *Player) {
 		c := pos.char
 		v.SetContent(pos.x, pos.y, c, comb, pos.style)
 	}
-
 }
 
-// Render an entity
+// Render an Entity
 func renderEntity(v *views.ViewPort, e *Entity) {
 	for _, pos := range e.pos {
 		var comb []rune
@@ -112,26 +113,28 @@ func renderEntity(v *views.ViewPort, e *Entity) {
 
 }
 
+// Render all Entities
 func renderEntities(v *views.ViewPort, entities []*Entity) {
 	for _, entity := range entities {
 		renderEntity(v, entity)
 	}
 }
 
-// Render all players
+// Render all Players
 func renderPlayers(v *views.ViewPort, players []*Player) {
 	for _, player := range players {
 		renderPlayer(v, player)
 	}
 }
 
-// Render all bits
+// Render all Bits
 func renderBits(v *views.ViewPort, bits []*Bit) {
 	for _, bit := range bits {
 		renderRune(v, bit.x, bit.y, bit.style, bit.char)
 	}
 }
 
+// Render all Bites
 func renderBites(v *views.ViewPort, bites []*Bite) {
 	for _, bite := range bites {
 		renderRune(v, bite.x, bite.y, bite.style, bite.char)

@@ -8,9 +8,11 @@ import (
 )
 
 const (
+
+	// Bit states
 	BitStatic = iota
-	BitMoving = iota
-	BitRandom = iota
+	BitMoving
+	BitRandom
 )
 
 // Bit struct
@@ -40,6 +42,7 @@ func NewBit(x, y, points int, char rune, state int, style tcell.Style) Bit {
 	return b
 }
 
+// Create a horizontal line of bits of a given length
 func NewBitLineH(g *Game, x, y, points, numBits int, char rune, style tcell.Style) {
 	for i := 0; i < numBits; i++ {
 		x += 2
@@ -48,6 +51,7 @@ func NewBitLineH(g *Game, x, y, points, numBits int, char rune, style tcell.Styl
 	}
 }
 
+// Create a vertical line of bits of a given length
 func NewBitLineV(g *Game, x, y, points, numBits int, char rune, style tcell.Style) {
 	for i := 0; i < numBits; i++ {
 		y += 1
@@ -70,7 +74,7 @@ func NewRandomBit(m *GameMap, points int, char rune, style tcell.Style) Bit {
 	return b
 }
 
-// Generate random coordinates for a Bit
+// Generate random coordinates for a Bit line
 func NewRandomBitLine(g *Game, m *GameMap, points int, char rune, style tcell.Style) {
 	for {
 		randNum := rand.Intn(6) + 2
@@ -110,6 +114,7 @@ func (b *Bit) Move(m *GameMap) {
 	}
 }
 
+// Create a new bite
 func NewBite(m *GameMap, x, y, points, dir, state int, char rune, style tcell.Style) Bite {
 	bit := NewBit(x, y, points, char, state, style)
 	bite := Bite{
@@ -119,6 +124,7 @@ func NewBite(m *GameMap, x, y, points, dir, state int, char rune, style tcell.St
 	return bite
 }
 
+// Generate random coordinates and random explosion direction for a new bite
 func NewRandomBite(m *GameMap, style tcell.Style, random bool) Bite {
 	var (
 		bite Bite
@@ -161,6 +167,7 @@ func NewRandomBite(m *GameMap, style tcell.Style, random bool) Bite {
 
 }
 
+// Trigger a bite explosion based on bite direction type
 func (b *Bite) ExplodeBite(g *Game, m *GameMap) {
 	b.style = BiteExplodedStyle
 	biteMap := &GameMap{
@@ -199,6 +206,7 @@ func (b *Bite) ExplodeBite(g *Game, m *GameMap) {
 	}
 }
 
+// Create a bite explosion to the right
 func (b *Bite) ExplodeXRight(biteMap, m *GameMap) {
 	for x := b.x + 1; x < m.Width-1; x++ {
 		time.Sleep(30 * time.Millisecond)
@@ -207,6 +215,8 @@ func (b *Bite) ExplodeXRight(biteMap, m *GameMap) {
 		biteMap.Objects[x][b.y].blocked = true
 	}
 }
+
+// Create a bit explosion to the left
 func (b *Bite) ExplodeXLeft(biteMap, m *GameMap) {
 	for x := b.x - 1; x > 1; x-- {
 		time.Sleep(30 * time.Millisecond)
@@ -216,6 +226,7 @@ func (b *Bite) ExplodeXLeft(biteMap, m *GameMap) {
 	}
 }
 
+// Create a bite explosion down
 func (b *Bite) ExplodeYDown(biteMap, m *GameMap) {
 	for y := b.y + 1; y < m.Height-1; y++ {
 		time.Sleep(30 * time.Millisecond)
@@ -225,6 +236,7 @@ func (b *Bite) ExplodeYDown(biteMap, m *GameMap) {
 	}
 }
 
+// Create a bite explosion up
 func (b *Bite) ExplodeYUp(biteMap, m *GameMap) {
 	for y := b.y - 1; y > 0; y-- {
 		time.Sleep(30 * time.Millisecond)

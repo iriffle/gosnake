@@ -16,36 +16,36 @@ import (
 
 const (
 	// Game states
-	Play     = iota
-	Quit     = iota
-	Pause    = iota
-	Restart  = iota
-	MainMenu = iota
+	Play = iota
+	Quit
+	Pause
+	Restart
+	MainMenu
 )
 
 const (
 	// Menu pages
-	MenuMain     = iota
-	MenuPlayer   = iota
-	MenuMode     = iota
-	MenuScore    = iota
-	MenuSettings = iota
+	MenuMain = iota
+	MenuPlayer
+	MenuMode
+	MenuScore
+	MenuSettings
 )
 
 const (
 	// Direction
-	DirUp    = iota
-	DirDown  = iota
-	DirLeft  = iota
-	DirRight = iota
-	DirAll   = iota
+	DirUp = iota
+	DirDown
+	DirLeft
+	DirRight
+	DirAll
 )
 
 const (
 	// Game modes
-	Basic    = iota
-	Advanced = iota
-	Battle   = iota
+	Basic = iota
+	Advanced
+	Battle
 
 	// Map values
 	MapWidth  = 100
@@ -117,72 +117,98 @@ var (
 	// Number of bits that should be present on map
 	numBits int = 5
 
-	// Preset styles
-	DefStyle          = GetStyle(DefBGStyle, DefFGStyle)
-	SelStyle          = GetStyle(DefBGStyle, SelFGStyle)
-	BitStyle          = GetStyle(Black, White)
-	BiteStyle         = GetStyle(Black, Fuchsia)
-	BiteExplodedStyle = GetStyle(Black, Red)
+	// Preset tcell color styles
+	DefStyle          = getStyle(DefBGStyle, DefFGStyle)
+	SelStyle          = getStyle(DefBGStyle, SelFGStyle)
+	BitStyle          = getStyle(Black, White)
+	BiteStyle         = getStyle(Black, Fuchsia)
+	BiteExplodedStyle = getStyle(Black, Red)
 )
 
 // Main game struct
 type Game struct {
-	screen     tcell.Screen
-	gview      *views.ViewPort
-	sview      *views.ViewPort
-	sbar       *views.TextBar
-	cview      *views.ViewPort
-	cbar       *views.TextBar
-	players    []*Player
-	entities   []*Entity
-	bites      []*Bite
-	bits       []*Bit
-	maps       []*GameMap
-	colors     []tcell.Color
-	state      int
-	mode       int
-	level      int
-	numPlayers int
-	fps        int
+
+	// Screen and views
+	screen tcell.Screen    // Main Screen
+	gview  *views.ViewPort // Game view port
+	sview  *views.ViewPort // Controls view port
+	sbar   *views.TextBar  // Controls text bar
+	//cview  *views.ViewPort // Console view port
+	//cbar   *views.TextBar  // Console text bar
+
+	// Game objects
+	players  []*Player     // All players in game
+	entities []*Entity     // All entities currently in game
+	bites    []*Bite       // All bites currently  in game (triangles)
+	bits     []*Bit        // All bits currently in game (square dots)
+	maps     []*GameMap    // All current game maps, including maps used for bites
+	colors   []tcell.Color // Colors usable for players
+
+	// Score tracking
+	scores    [][]string // 1 player scores
+	scores2   [][]string // 2 player scores
+	scoreFile string     // File that scores are saved to
+
+	// Misc variables
+	state      int // Game state
+	mode       int // Game mode
+	level      int // Current game level
+	numPlayers int // Chosen number of players for game
+	fps        int // Game FPS
 	frames     int
-	bitQuit    chan bool
-	scores     [][]string
-	scoreFile  string
+	bitQuit    chan bool // Used to close handlebits goroutine
 }
 
 // Initialize the screen and set views/bars and styles
-func (g *Game) InitScreen() error {
+func (g *Game) InitScreen() {
+
 	// Prepare screen
 	encoding.Register()
+
 	if screen, err := tcell.NewScreen(); err != nil {
-		return err
+		log.Println("Failed to create screen: ", err)
+		os.Exit(1)
 	} else if err = screen.Init(); err != nil {
-		return err
+		log.Println("Failed to initialize screen: ", err)
+		os.Exit(1)
 	} else {
 		screen.SetStyle(DefStyle)
 		g.screen = screen
 	}
 
-	if g.screen.HasMouse() {
-		g.screen.EnableMouse()
-	}
+	// Enable mouse support. Not currently used
+	// if g.screen.HasMouse() {
+	// 	g.screen.EnableMouse()
+	// }
+
+	// Display cursor at bottom of screen. Seems to be an issue with
+	// Windows Terminal and hiding the cursor completely
 	g.screen.ShowCursor(CViewStartX, CViewStartY)
+
+	// Create the main game viewport
 	g.gview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
+
+	// Create the secondary view port and text bars for the controls display
 	g.sview = views.NewViewPort(g.screen, SViewStartX, SViewStartY, SViewWidth, SViewHeight)
 	g.sbar = views.NewTextBar()
 	g.sbar.SetView(g.sview)
 	g.sbar.SetStyle(DefStyle)
-
-	return nil
 }
 
 // Launch main menu screen
 func (g *Game) MainMenu() {
+
+	// Setup main menu
 	g.state = MainMenu
 	cMenu := MenuMain
+
+	// Read high scores from scoreFile
 	g.readScores()
+
+	// Run main menu until play or quit
 	for g.state != Play {
-		// Main menu
+
+		// Display the "Main Menu" menu
 		if cMenu == MenuMain {
 			i := g.handleMenu(mainOptions)
 			switch i {
@@ -195,7 +221,9 @@ func (g *Game) MainMenu() {
 				cMenu = MenuScore
 			}
 		}
-		// Player number menu
+
+		// Display the Player number choice menu to decide
+		// how many players will be playing
 		if cMenu == MenuPlayer {
 			i := g.handleMenu(playerOptions)
 			switch i {
@@ -211,12 +239,12 @@ func (g *Game) MainMenu() {
 				break
 			}
 		}
-		// High score screen
+
+		// Display the high score screen
 		for cMenu == MenuScore {
-			err := renderHighScores(g, DefStyle)
-			if err != nil {
-				log.Println(err)
-			}
+			renderHighScoreScreen(g, DefStyle)
+
+			// Wait for Escape key to be pressed to return to Main Menu
 			ev := g.screen.PollEvent()
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
@@ -231,9 +259,12 @@ func (g *Game) MainMenu() {
 
 // Initialize game
 func (g *Game) InitGame() {
+
+	// Initialize game states
 	g.state = Play
 	g.level = 1
 
+	// Create a game map
 	m = &GameMap{
 		Width:  MapWidth,
 		Height: MapHeight,
@@ -244,8 +275,10 @@ func (g *Game) InitGame() {
 	m.InitMap()
 	m.InitMapBoundary(WallRune, FloorRune, DefStyle)
 	m.InitLevel1(g)
+
 	g.colors = playerColors
 
+	// Set player starting x value to middle of map
 	x := MapWidth / 2
 
 	// Create a player for selected number of players
@@ -269,38 +302,53 @@ func (g *Game) InitGame() {
 	log.Println("Initialized game with ", strconv.Itoa(g.numPlayers), " players.")
 }
 
-// Run main game loop
-func (g *Game) Run() {
+// Run the actual game
+func (g *Game) RunGame() {
+
+	// Run a goroutine for each player to handle their own loop
+	// separately from each other and the main game loop
 	for _, p := range g.players {
 		p.ch = make(chan bool)
 		go g.handlePlayer(p)
 	}
 
+	// The gameplay loop
 	for g.state == Play || g.state == Pause {
+
+		// Handle entities and objects on level
 		g.handleLevel(m)
-		g.getFPS()
+
+		// Run goroutine for player's input
 		go handleInput(g)
+
+		// Handle game if pause button is pressed
 		g.handlePause()
+
+		// Render the game
 		renderAll(g, DefStyle, m)
+
+		// Keep track of FPS
+		g.getFPS()
 		g.frames++
 	}
+
+	// If game ends then kill the handlePlayer goroutines
 	for _, p := range g.players {
 		p.ch <- true
 	}
+
 	//g.bitQuit <- true
 }
 
-// Display high score screen
-func (g *Game) HighScores() {
-	// TODO
-}
-
-// Quit game
+// Completely quit game back to terminal
 func (g *Game) Quit() {
 	g.screen.Fini()
 	os.Exit(0)
 }
 
+// Renders the menu screens and keeps track of which
+// menu item is currently selected and which to move to
+// based on input.
 func (g *Game) handleMenu(options []string) int {
 	choice := 0
 	m := NewMainMenu(options, DefStyle, SelStyle, 0)
@@ -319,6 +367,8 @@ func (g *Game) handleMenu(options []string) int {
 // Pause game until unpaused
 func (g *Game) handlePause() {
 	chQuit := false
+
+	// If pause is called kill the player goroutines
 	for g.state == Pause {
 		if !chQuit {
 			for _, p := range g.players {
@@ -326,9 +376,12 @@ func (g *Game) handlePause() {
 				chQuit = true
 			}
 		}
+
+		// Render "PAUSED" to screen
 		renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "PAUSED")
 		g.screen.Show()
 
+		// If unpaused then restart player and bit goroutines
 		if g.state == Play {
 			for _, p := range g.players {
 				go g.handlePlayer(p)
@@ -340,42 +393,73 @@ func (g *Game) handlePause() {
 
 // Player movevement loop
 func (g *Game) handlePlayer(p *Player) {
+	var scoreChange bool
+
+	// Continuously loop unless killed through p.ch channel
 	for {
 		select {
 		default:
+
+			// Check which direction player should be moving
 			dx, dy := p.CheckDirection(g)
+
+			// Check if player is blocked at all
 			if p.IsBlocked(m, g.maps, g.entities, g.players, dx, dy) {
+
+				// Run if in 2 player mode
 				if g.numPlayers > 1 {
-					//if p.IsBlockedByPlayer(g.players) {
+
+					// Generate bits where player's body was during collision
 					for _, i := range p.pos {
 						b := NewBit(i.ox, i.oy, 10, BitRune, BitRandom, BitStyle)
 						g.bits = append(g.bits, &b)
 					}
-					//}
+
+					// Read high scores from file, compare against current scores
+					// and make changes if necessary
 					g.readScores()
-					scoreChange := g.checkScores()
+					g.scores2, scoreChange = g.checkScores()
 					if scoreChange {
 						g.writeScores()
 					}
+
+					// Reset the player
 					p.Reset(MapWidth/2, MapHeight/2, 3)
+
+					// Run if in 1 player mode
 				} else {
+
+					// Kill player
 					p.Kill()
+
+					// Read high scores from file, compare against current scores
+					// and make changes if necessary
 					g.readScores()
-					scoreChange := g.checkScores()
+					g.scores, scoreChange = g.checkScores()
 					if scoreChange {
 						g.writeScores()
 					}
+
+					// Wait a short period of time then restart the game
 					time.Sleep(100 * time.Millisecond)
 					g.screen.Fini()
 					g.state = Restart
 				}
 			} else {
+				// Move player if not blocked
 				p.Move(dx, dy)
 			}
+			// Check if player is on a bit or bite
 			p.IsOnBit(g)
 			p.IsOnBite(g, m)
+
+			// Calculate player's speed based on their score.
+			// Movement is done by causing the player goroutine
+			// to sleep for a set amount of time.
 			p.speed += p.score / 200
 			time.Sleep(g.moveInterval(p.speed, p.direction))
+
+		// Quit goroutine if signaled
 		case <-p.ch:
 			return
 		}
@@ -387,13 +471,17 @@ func (g *Game) handleBits(m *GameMap) {
 	for {
 		select {
 		default:
+			// Move bits in a random direction after a set amount of time
 			for _, bit := range g.bits {
 				switch bit.state {
 				case BitRandom:
 					bit.Move(m)
 				}
 			}
+			// Wait a set amount of time
 			time.Sleep(500 * time.Millisecond)
+
+		// Quit goroutine if signaled
 		case <-g.bitQuit:
 			return
 		}
@@ -404,18 +492,24 @@ func (g *Game) handleBits(m *GameMap) {
 func (g *Game) handleLevel(m *GameMap) {
 	for _, p := range g.players {
 		switch p.score {
+
+		// Level 2
 		case 200:
 			if g.level < 2 {
 				m.InitLevel2(g)
 				g.level = 2
 				log.Println(p.name + " reached level 2!")
 			}
+
+		// Level 3
 		case 400:
 			if g.level < 3 {
 				m.InitLevel3(g)
 				g.level = 3
 				log.Println(p.name + " reached level 3!")
 			}
+
+		// Level 4
 		case 600:
 			if g.level < 4 {
 				m.InitLevel4(g)
@@ -426,45 +520,84 @@ func (g *Game) handleLevel(m *GameMap) {
 	}
 }
 
+// Read high scores from scoreFile
 func (g *Game) readScores() {
+
+	// Clear currently cached scores
 	g.scores = nil
+	g.scores2 = nil
+
+	twoPlayer := false
+
+	// Open the scoreFile
 	f, err := os.Open(g.scoreFile)
 	if err != nil {
-		f, err := os.Create(g.scoreFile)
-		if err != nil {
-			log.Println(err, f)
-		}
+		log.Println(err, f)
 	}
+
+	// Close the scoreFile on exit
 	defer func() {
 		if err = f.Close(); err != nil {
 			log.Println(err)
 		}
 	}()
 
+	// Read scoreFile one line at a time
 	s := bufio.NewScanner(f)
 	for s.Scan() {
+
+		// If hash symbol read then start appending scores
+		// to the 2 player scores variable (g.scores2)
+		if s.Text() == "#" {
+			twoPlayer = true
+			continue
+		}
+
+		// Split the scores into 3 values, split by colons
 		score := strings.Split(s.Text(), ":")
-		g.scores = append(g.scores, score)
+
+		// Append the scores based on number of players
+		if !(twoPlayer) {
+			g.scores = append(g.scores, score)
+		} else {
+			g.scores2 = append(g.scores2, score)
+		}
 	}
 	err = s.Err()
 	if err != nil {
-		//log.Fatal(err)
 		log.Println(err)
 	}
 }
 
+// Write high scores to scoreFile
 func (g *Game) writeScores() {
+
+	// Open score file overwriting any previous data
 	f, err := os.OpenFile(g.scoreFile, os.O_CREATE, 0660)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	// Close scoreFile on exit
 	defer func() {
 		if err = f.Close(); err != nil {
-			//log.Fatal(err)
 			fmt.Println(err)
 		}
 	}()
-	for _, v := range g.scores {
+
+	// Write the scores for 1 player and 2 player separated
+	// by a hash symbol
+	g.writeScore(f, g.scores)
+	_, err = fmt.Fprintln(f, "#")
+	if err != nil {
+		log.Println(err)
+	}
+	g.writeScore(f, g.scores2)
+}
+
+// Loop through a slice of scores and write to file. Used by writeScores
+func (g *Game) writeScore(f *os.File, scores [][]string) {
+	for _, v := range scores {
 		_, err := fmt.Fprintln(f, strings.Join(v[:], ":"))
 		if err != nil {
 			log.Println(err)
@@ -472,64 +605,119 @@ func (g *Game) writeScores() {
 	}
 }
 
-func (g *Game) checkScores() bool {
+// Compare player's score against high score list to see if a new
+// high score has been reached.
+func (g *Game) checkScores() ([][]string, bool) {
+
+	var (
+		scores     [][]string
+		newScores  [][]string
+		numPlayers string
+	)
+
 	scoreChange := false
-	var newScores [][]string
-	if g.scores != nil {
+
+	// Determine which score slice to use based on number of players
+	if g.numPlayers == 1 {
+		scores = g.scores
+
+		// numPlayers is used over g.numPlayers later when appending
+		// to newScore slice as a bug seems to pop up occassionally if
+		// strconv.Itoa is used more than once being passed to append.
+		numPlayers = "1"
+	} else {
+		scores = g.scores2
+		numPlayers = "2"
+	}
+
+	// If there are previous high scores then compare them to
+	// player's current score
+	if scores != nil {
+
+		// Run for both players if more than one exists
 		for _, p := range g.players {
-			for i, s := range g.scores {
+
+			// Run through all scores in the list
+			for i, s := range scores {
+
+				// Score is saved as a string so it must be converted to
+				// integer to compare
 				scoreStr, err := strconv.Atoi(s[2])
 				if err != nil {
 					log.Println(err)
 				}
-				numPlayers, err := strconv.Atoi(s[0])
-				if err != nil {
-					log.Println(err)
-				}
-				if p.score > scoreStr && numPlayers == g.numPlayers {
+
+				// Check if player's score is higher than current score from list
+				if p.score > scoreStr {
 					var newScore []string
 					scoreChange = true
-					newScore = append(newScore, strconv.Itoa(g.numPlayers), p.name, strconv.Itoa(p.score))
+
+					// Create a formatted score of "number of players:player name:score"
+					newScore = append(newScore, numPlayers, p.name, strconv.Itoa(p.score))
+
+					// Append the previous high scores to the new high score list up until
+					// where the newest high score should be inserted
 					for a := 0; a < i; a++ {
-						newScores = append(newScores, g.scores[a])
+						newScores = append(newScores, scores[a])
 					}
+
+					// Append the newest high score into the new high score list
 					newScores = append(newScores, newScore)
+
+					// Continue appending the rest of the previous high scores after the
+					// newest high score until there are no scores left
 					if i <= len(g.scores)-1 {
 						for a := i; a < len(g.scores); a++ {
-							newScores = append(newScores, g.scores[a])
+							newScores = append(newScores, scores[a])
 						}
 					}
 					break
-				} else if len(g.scores) < MaxHighScores && numPlayers == g.numPlayers {
+
+					// If the player's score is less than any of the previous high scores
+					// but the number of previous high scores is less than the maximum
+					// number of high scores saved, then add the score to the end of the list.
+				} else if len(scores) < MaxHighScores {
 					var newScore []string
 					scoreChange = true
-					newScore = append(newScore, strconv.Itoa(g.numPlayers), p.name, strconv.Itoa(p.score))
-					newScores = append(g.scores, newScore)
+					newScore = append(newScore, numPlayers, p.name, strconv.Itoa(p.score))
+					newScores = append(scores, newScore)
 					break
 				}
 			}
 		}
+
+		// Check for changes in high score list
 		if scoreChange {
-			g.scores = nil
+
+			// Reset scores list
+			scores = nil
+
+			// If the number of high scores saved is longer than the maximum, then only
+			// add scores up to the maximum back to the scores list
 			if len(newScores) > MaxHighScores {
 				for i := 0; i < MaxHighScores; i++ {
-					g.scores = append(g.scores, newScores[i])
+					scores = append(scores, newScores[i])
 				}
+
+				// If its not higher then add all of them
 			} else {
 				for i := 0; i < len(newScores); i++ {
-					g.scores = append(g.scores, newScores[i])
+					scores = append(scores, newScores[i])
 				}
 			}
 		}
+
+		// If no previous high scores present then add all player scores
+		// to high score list
 	} else {
 		for _, p := range g.players {
 			var newScore []string
 			scoreChange = true
 			newScore = append(newScore, strconv.Itoa(g.numPlayers), p.name, strconv.Itoa(p.score))
-			g.scores = append(g.scores, newScore)
+			scores = append(scores, newScore)
 		}
 	}
-	return scoreChange
+	return scores, scoreChange
 }
 
 // Calculate FPS
@@ -551,7 +739,7 @@ func (g *Game) moveInterval(speed, direction int) time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
-// Remove bit from map
+// Remove a bit from game
 func (g *Game) removeBit(i int) {
 	b := &Bit{}
 	g.bits[i] = g.bits[len(g.bits)-1]
@@ -559,7 +747,8 @@ func (g *Game) removeBit(i int) {
 	g.bits = g.bits[:len(g.bits)-1]
 }
 
-func GetStyle(bg tcell.Color, fg tcell.Color) tcell.Style {
+// Generate a tcell style using a provided background and foreground color
+func getStyle(bg tcell.Color, fg tcell.Color) tcell.Style {
 	style := tcell.StyleDefault.
 		Background(bg).
 		Foreground(fg)

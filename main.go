@@ -13,6 +13,10 @@ var (
 	// Saved high score file
 	scoreFile = "hs.dat"
 
+	// Used if log flag provided
+	logFile string
+
+	// Keep track of previous game values
 	lastGameState  int = Play
 	lastNumPlayers int
 )
@@ -21,6 +25,7 @@ func main() {
 
 	var logfile string
 
+	// Check if log flag provided
 	flag.StringVar(&logfile, "log", logfile, "Log file for debugging log")
 	flag.Parse()
 
@@ -40,27 +45,39 @@ func main() {
 		log.SetOutput(ioutil.Discard)
 	}
 
+	// Check if high score file exists. If not then create it
+	_, err := os.Stat(scoreFile)
+	if os.IsNotExist(err) {
+		f, err := os.Create(scoreFile)
+		if err != nil {
+			log.Println(err, f)
+		}
+	}
+
 	// Game loop
 	for {
 		// Create game
 		game := &Game{numPlayers: lastNumPlayers, scoreFile: scoreFile}
+
 		// Initialize screen
-		if err := game.InitScreen(); err != nil {
-			log.Println("Failed to initialize game: %v\n", err)
-			os.Exit(1)
-		}
+		game.InitScreen()
+
 		// Open main menu
 		if lastGameState == Play || lastGameState == MainMenu {
 			game.MainMenu()
 		}
 		// Setup a game
 		game.InitGame()
+
 		// Run the game
-		game.Run()
+		game.RunGame()
+
 		// Quit game if signaled
 		if game.state == Quit {
 			game.Quit()
 		}
+
+		// Save game values
 		lastGameState = game.state
 		lastNumPlayers = game.numPlayers
 	}

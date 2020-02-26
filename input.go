@@ -4,8 +4,10 @@ import (
 	"github.com/gdamore/tcell"
 )
 
-// Handle main game input
+// Handle main game player input
 func handleInput(g *Game) {
+
+	// Make adjustments depending on if 1 or 2 player game
 	var p2 *Player
 	p := g.players[0]
 	if len(g.players) > 1 {
@@ -13,20 +15,30 @@ func handleInput(g *Game) {
 	} else {
 		p2 = p
 	}
+
+	// Wait for input events and process
 	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
+
+		// Quit game and return to Main Menu if Escape key pressed
 		if ev.Key() == tcell.KeyEscape {
 			g.screen.Fini()
 			g.state = MainMenu
 			return
+
+			// Quit game and close window if terminal window exited
 		} else if ev.Key() == tcell.KeyExit {
 			g.state = Quit
 			return
+
+			// Restart game if F1 pressed
 		} else if ev.Key() == tcell.KeyF1 {
 			g.screen.Fini()
 			g.state = Restart
 			return
+
+			// Pause game if F12 pressed
 		} else if ev.Key() == tcell.KeyF12 {
 			if g.state == Play {
 				g.state = Pause
@@ -37,7 +49,11 @@ func handleInput(g *Game) {
 			}
 		}
 
+		// Handle player direction. Can use WSAD or Arrow keys
+		// for 1 player. 2 player splits these up with WSAD for
+		// player1 and Arrow keys for player2
 		if ev.Key() == tcell.KeyUp {
+			// Prevent player from turning into themselves
 			if !(p2.direction == DirDown) {
 				p2.direction = DirUp
 			}

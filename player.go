@@ -65,6 +65,8 @@ func (p *Player) CheckBitPos(bits []*Bit) (bool, int) {
 	return false, i
 }
 
+// Check the position of bites in relation to the player
+// and see if there is a match
 func (p *Player) CheckBitePos(bites []*Bite) (bool, int) {
 	i := 0
 	for i, bite := range bites {
@@ -75,6 +77,7 @@ func (p *Player) CheckBitePos(bites []*Bite) (bool, int) {
 	return false, i
 }
 
+// Determine if player is on a bite and if so trigger explosion
 func (p *Player) IsOnBite(g *Game, m *GameMap) {
 	onBite, i := p.CheckBitePos(g.bites)
 	if onBite {
@@ -131,6 +134,7 @@ func (p *Player) IsBlockedByPlayer(players []*Player, dx, dy int) bool {
 	return false
 }
 
+// Check if player is blocked by an entity
 func (p *Player) IsBlockedByEntity(entities []*Entity, players []*Player, dx, dy int) bool {
 	for _, p := range players {
 		for _, entity := range entities {
