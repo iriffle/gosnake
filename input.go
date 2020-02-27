@@ -23,18 +23,16 @@ func handleInput(g *Game) {
 
 		// Quit game and return to Main Menu if Escape key pressed
 		if ev.Key() == tcell.KeyEscape {
-			g.screen.Fini()
-			g.state = MainMenu
+			g.QuitToMenu()
 			return
 
 			// Quit game and close window if terminal window exited
 		} else if ev.Key() == tcell.KeyExit {
-			g.state = Quit
+			g.QuitGame()
 			return
 
 			// Restart game if F1 pressed
 		} else if ev.Key() == tcell.KeyF1 {
-			g.screen.Fini()
 			g.state = Restart
 			return
 
@@ -152,4 +150,21 @@ func handleMenuInput(g *Game, m *Menu) int {
 		}
 	}
 	return 0
+}
+
+func handleStringInput(g *Game) rune {
+	ev := g.screen.PollEvent()
+	switch ev := ev.(type) {
+	case *tcell.EventKey:
+		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyExit {
+			return '\v'
+		} else if ev.Key() == tcell.KeyEnter {
+			return '\r'
+		} else if ev.Key() == tcell.KeyBackspace {
+			return '\t'
+		} else {
+			return ev.Rune()
+		}
+	}
+	return '\n'
 }

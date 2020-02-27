@@ -17,14 +17,14 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 		renderMap(g.gview, b)
 	}
 	if g.numPlayers == 1 {
-		renderLevel(g.gview, g.level, m.Width, m.Height, SelStyle)
+		renderLevel(g.gview, g.level, m.Width, m.Height, g.style.SelStyle)
 	}
-	renderScore(g.gview, g.players, m.Width, m.Height, SelStyle)
+	renderScore(g.gview, g.players, m.Width, m.Height, g.style.SelStyle)
 	renderBits(g.gview, g.bits)
 	renderBites(g.gview, g.bites)
 	renderEntities(g.gview, g.entities)
 	renderPlayers(g.gview, g.players)
-	g.sbar.SetCenter(controls, DefStyle)
+	g.sbar.SetCenter(controls, g.style.DefStyle)
 	g.sbar.Draw()
 	g.screen.Show()
 }
@@ -44,7 +44,7 @@ func renderMap(v *views.ViewPort, m *GameMap) {
 
 // Render a menu
 func renderMenu(g *Game, m *Menu, style tcell.Style) {
-	g.gview.Fill(' ', style)
+	g.screen.Clear()
 	for _, item := range m.items {
 		renderStr(g.gview, item.x, item.y, item.style, item.str)
 	}

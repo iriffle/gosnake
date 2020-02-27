@@ -15,38 +15,6 @@ import (
 )
 
 const (
-	// Game states
-	Play = iota
-	Quit
-	Pause
-	Restart
-	MainMenu
-)
-
-const (
-	// Menu pages
-	MenuMain = iota
-	MenuPlayer
-	MenuMode
-	MenuScore
-	MenuSettings
-)
-
-const (
-	// Direction
-	DirUp = iota
-	DirDown
-	DirLeft
-	DirRight
-	DirAll
-)
-
-const (
-	// Game modes
-	Basic = iota
-	Advanced
-	Battle
-
 	// Map values
 	MapWidth  = 100
 	MapHeight = 35
@@ -68,27 +36,17 @@ const (
 	// High Score count
 	MaxHighScores = 5
 
-	// Preset colors
-	Black   = tcell.ColorBlack
-	Maroon  = tcell.ColorMaroon
-	Green   = tcell.ColorGreen
-	Navy    = tcell.ColorNavy
-	Olive   = tcell.ColorOlive
-	Purple  = tcell.ColorPurple
-	Teal    = tcell.ColorTeal
-	Silver  = tcell.ColorSilver
-	Gray    = tcell.ColorGray
-	Red     = tcell.ColorRed
-	Blue    = tcell.ColorBlue
-	Lime    = tcell.ColorLime
-	Yellow  = tcell.ColorYellow
-	Fuchsia = tcell.ColorFuchsia
-	Aqua    = tcell.ColorAqua
-	White   = tcell.ColorWhite
-
-	DefBGStyle = Black
-	DefFGStyle = Silver
-	SelFGStyle = Aqua
+	// Game runes
+	PlayerRune      rune = '█'
+	BitRune         rune = '■'
+	WallRune        rune = '▒'
+	FloorRune       rune = ' '
+	BiteUpRune      rune = '▲'
+	BiteDownRune    rune = '▼'
+	BiteLeftRune    rune = '◄'
+	BiteRightRune   rune = '►'
+	BiteAllRune     rune = '◆'
+	BiteExplodeRune rune = '░'
 )
 
 var (
@@ -100,29 +58,9 @@ var (
 	mainOptions            = []string{"Play", "High Scores", "Settings"}
 	playerOptions          = []string{"1 Player", "2 Player"}
 	gameModeOptions        = []string{"Basic", "Advanced", "Battle"}
-	playerColors           = []tcell.Color{tcell.ColorGreen, tcell.ColorRed, tcell.ColorSilver, tcell.ColorAqua}
-
-	// Runes to be used on map
-	PlayerRune      rune = '█'
-	BitRune         rune = '■'
-	WallRune        rune = '▒'
-	FloorRune       rune = ' '
-	BiteUpRune      rune = '▲'
-	BiteDownRune    rune = '▼'
-	BiteLeftRune    rune = '◄'
-	BiteRightRune   rune = '►'
-	BiteAllRune     rune = '◆'
-	BiteExplodeRune rune = '░'
 
 	// Number of bits that should be present on map
 	numBits int = 5
-
-	// Preset tcell color styles
-	DefStyle          = getStyle(DefBGStyle, DefFGStyle)
-	SelStyle          = getStyle(DefBGStyle, SelFGStyle)
-	BitStyle          = getStyle(Black, White)
-	BiteStyle         = getStyle(Black, Fuchsia)
-	BiteExplodedStyle = getStyle(Black, Red)
 )
 
 // Main game struct
@@ -137,12 +75,12 @@ type Game struct {
 	//cbar   *views.TextBar  // Console text bar
 
 	// Game objects
-	players  []*Player     // All players in game
-	entities []*Entity     // All entities currently in game
-	bites    []*Bite       // All bites currently  in game (triangles)
-	bits     []*Bit        // All bits currently in game (square dots)
-	maps     []*GameMap    // All current game maps, including maps used for bites
-	colors   []tcell.Color // Colors usable for players
+	players  []*Player  // All players in game
+	entities []*Entity  // All entities currently in game
+	bites    []*Bite    // All bites currently  in game (triangles)
+	bits     []*Bit     // All bits currently in game (square dots)
+	maps     []*GameMap // All current game maps, including maps used for bites
+	style    *Style     // Colors usable for players
 
 	// Score tracking
 	scores    [][]string // 1 player scores
@@ -162,6 +100,10 @@ type Game struct {
 // Initialize the screen and set views/bars and styles
 func (g *Game) InitScreen() {
 
+	// Set style
+	s := SetDefaultStyle()
+	g.style = s
+
 	// Prepare screen
 	encoding.Register()
 
@@ -172,7 +114,7 @@ func (g *Game) InitScreen() {
 		log.Println("Failed to initialize screen: ", err)
 		os.Exit(1)
 	} else {
-		screen.SetStyle(DefStyle)
+		screen.SetStyle(g.style.DefStyle)
 		g.screen = screen
 	}
 
@@ -192,7 +134,7 @@ func (g *Game) InitScreen() {
 	g.sview = views.NewViewPort(g.screen, SViewStartX, SViewStartY, SViewWidth, SViewHeight)
 	g.sbar = views.NewTextBar()
 	g.sbar.SetView(g.sview)
-	g.sbar.SetStyle(DefStyle)
+	g.sbar.SetStyle(g.style.DefStyle)
 }
 
 // Launch main menu screen
@@ -242,7 +184,7 @@ func (g *Game) MainMenu() {
 
 		// Display the high score screen
 		for cMenu == MenuScore {
-			renderHighScoreScreen(g, DefStyle)
+			renderHighScoreScreen(g, g.style.DefStyle)
 
 			// Wait for Escape key to be pressed to return to Main Menu
 			ev := g.screen.PollEvent()
@@ -273,30 +215,32 @@ func (g *Game) InitGame() {
 	}
 	g.maps = append(g.maps, m)
 	m.InitMap()
-	m.InitMapBoundary(WallRune, FloorRune, DefStyle)
+	m.InitMapBoundary(WallRune, FloorRune, g.style.DefStyle)
 	m.InitLevel1(g)
-
-	g.colors = playerColors
 
 	// Set player starting x value to middle of map
 	x := MapWidth / 2
 
 	// Create a player for selected number of players
 	for i := 0; i < g.numPlayers; i++ {
+		pName := ""
 		y := (MapHeight / 2) + (i * 2)
 
-		pName := "player"
-		pName = pName + strconv.Itoa(i+1)
+		for pName == "" {
+			pName = g.getPlayerName(i+1, m.Width, m.Height, g.style.DefStyle, g.style.SelStyle)
+		}
+		if pName == "-quit-" {
+			g.QuitToMenu()
+			return
+		}
 
-		pStyle := tcell.StyleDefault.
-			Background(DefBGStyle).
-			Foreground(g.colors[i])
+		pStyle := g.style.PlayerColors[i]
 		p := NewPlayer(x, y, 0, (DirLeft - i), PlayerRune, pName, pStyle)
 		g.players = append(g.players, &p)
 	}
 	g.players[0].score = 0
 	for i := 0; i < numBits; i++ {
-		b := NewRandomBit(m, 10, BitRune, BitStyle)
+		b := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
 		g.bits = append(g.bits, &b)
 	}
 	log.Println("Initialized game with ", strconv.Itoa(g.numPlayers), " players.")
@@ -325,7 +269,7 @@ func (g *Game) RunGame() {
 		g.handlePause()
 
 		// Render the game
-		renderAll(g, DefStyle, m)
+		renderAll(g, g.style.DefStyle, m)
 
 		// Keep track of FPS
 		g.getFPS()
@@ -341,9 +285,16 @@ func (g *Game) RunGame() {
 }
 
 // Completely quit game back to terminal
-func (g *Game) Quit() {
+func (g *Game) QuitGame() {
+	g.state = Quit
 	g.screen.Fini()
 	os.Exit(0)
+}
+
+func (g *Game) QuitToMenu() {
+	g.state = MainMenu
+	g.screen.Fini()
+	g.state = MainMenu
 }
 
 // Renders the menu screens and keeps track of which
@@ -351,11 +302,11 @@ func (g *Game) Quit() {
 // based on input.
 func (g *Game) handleMenu(options []string) int {
 	choice := 0
-	m := NewMainMenu(options, DefStyle, SelStyle, 0)
+	m := NewMainMenu(options, g.style.DefStyle, g.style.SelStyle, 0)
 	m.SetSelected(0)
 	m.ChangeSelected()
 	for choice == 0 {
-		renderMenu(g, &m, DefStyle)
+		renderMenu(g, &m, g.style.DefStyle)
 		choice = handleMenuInput(g, &m)
 	}
 	if choice == 1 {
@@ -378,7 +329,7 @@ func (g *Game) handlePause() {
 		}
 
 		// Render "PAUSED" to screen
-		renderCenterStr(g.gview, MapWidth, MapHeight-4, BitStyle, "PAUSED")
+		renderCenterStr(g.gview, MapWidth, MapHeight-4, g.style.BitStyle, "PAUSED")
 		g.screen.Show()
 
 		// If unpaused then restart player and bit goroutines
@@ -411,7 +362,7 @@ func (g *Game) handlePlayer(p *Player) {
 
 					// Generate bits where player's body was during collision
 					for _, i := range p.pos {
-						b := NewBit(i.ox, i.oy, 10, BitRune, BitRandom, BitStyle)
+						b := NewBit(i.ox, i.oy, 10, BitRune, BitRandom, g.style.BitStyle)
 						g.bits = append(g.bits, &b)
 					}
 
@@ -424,13 +375,13 @@ func (g *Game) handlePlayer(p *Player) {
 					}
 
 					// Reset the player
-					p.Reset(MapWidth/2, MapHeight/2, 3)
+					p.Reset(MapWidth/2, MapHeight/2, 3, g.style.BiteExplodedStyle)
 
 					// Run if in 1 player mode
 				} else {
 
 					// Kill player
-					p.Kill()
+					p.Kill(g.style.BiteExplodedStyle)
 
 					// Read high scores from file, compare against current scores
 					// and make changes if necessary
@@ -747,11 +698,43 @@ func (g *Game) removeBit(i int) {
 	g.bits = g.bits[:len(g.bits)-1]
 }
 
-// Generate a tcell style using a provided background and foreground color
-func getStyle(bg tcell.Color, fg tcell.Color) tcell.Style {
-	style := tcell.StyleDefault.
-		Background(bg).
-		Foreground(fg)
+func (g *Game) getPlayerName(playerNum, w, h int, headStyle, typeStyle tcell.Style) string {
+	var (
+		char       rune
+		chars      []rune
+		newChars   []rune
+		charString string
+	)
 
-	return style
+	for {
+		// Reset screen and values
+		g.gview.Clear()
+		newChars = nil
+
+		// Render to screen
+		renderCenterStr(g.gview, w, h, headStyle, "Name of Player "+strconv.Itoa(playerNum)+":")
+		renderCenterStr(g.gview, w, h+2, typeStyle, charString+"|")
+		g.screen.Show()
+
+		// Get input
+		char = handleStringInput(g)
+
+		// Evaluate input
+		if char == '\r' {
+			return charString
+		} else if char == '\n' {
+			continue
+		} else if char == '\v' {
+			return "-quit-"
+		} else if char == '\t' {
+			for i := 0; i < len(chars)-1; i++ {
+				newChars = append(newChars, chars[i])
+			}
+			chars = newChars
+			charString = string(chars)
+		} else {
+			chars = append(chars, char)
+			charString = string(chars)
+		}
+	}
 }

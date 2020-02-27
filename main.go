@@ -19,6 +19,8 @@ var (
 	// Keep track of previous game values
 	lastGameState  int = Play
 	lastNumPlayers int
+
+	initScreen = false
 )
 
 func main() {
@@ -57,28 +59,30 @@ func main() {
 	// Game loop
 	for {
 		// Create game
-		game := &Game{numPlayers: lastNumPlayers, scoreFile: scoreFile}
+		g := &Game{numPlayers: lastNumPlayers, scoreFile: scoreFile}
 
 		// Initialize screen
-		game.InitScreen()
+		g.InitScreen()
 
 		// Open main menu
 		if lastGameState == Play || lastGameState == MainMenu {
-			game.MainMenu()
+			g.MainMenu()
 		}
 		// Setup a game
-		game.InitGame()
+		g.InitGame()
 
 		// Run the game
-		game.RunGame()
+		if g.state == Play {
+			g.RunGame()
+		}
 
 		// Quit game if signaled
-		if game.state == Quit {
-			game.Quit()
+		if g.state == Quit {
+			g.QuitGame()
 		}
 
 		// Save game values
-		lastGameState = game.state
-		lastNumPlayers = game.numPlayers
+		lastGameState = g.state
+		lastNumPlayers = g.numPlayers
 	}
 }

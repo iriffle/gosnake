@@ -27,17 +27,17 @@ func NewPlayer(x, y, score, direction int, char rune, name string, style tcell.S
 }
 
 // Reset player's score and set back to middle of screen
-func (p *Player) Reset(x, y, direction int) {
+func (p *Player) Reset(x, y, direction int, biteExplodedStyle tcell.Style) {
 	style := p.pos[0].style
-	p.Kill()
+	p.Kill(biteExplodedStyle)
 	p.score = 0
 	p.Entity = NewEntity(x, y, direction, 1, p.pos[0].char, p.pos[0].style)
 	p.pos[0].style = style
 }
 
-func (p *Player) Kill() {
+func (p *Player) Kill(biteExplodedStyle tcell.Style) {
 	for i, _ := range p.pos {
-		p.pos[i].style = BiteExplodedStyle
+		p.pos[i].style = biteExplodedStyle
 		time.Sleep(20 * time.Millisecond)
 	}
 }

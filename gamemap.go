@@ -53,14 +53,14 @@ func (m *GameMap) InitLevel3(g *Game) {
 }
 
 func (m *GameMap) InitLevel4(g *Game) {
-	go m.MovingWall(g, m.Width/2, m.Height/4, 2, 1, 10, WallRune, DefStyle)
-	go m.MovingWall(g, m.Width/2, (m.Height - m.Height/4), 3, 1, 10, WallRune, DefStyle)
+	go m.MovingWall(g, m.Width/2, m.Height/4, 2, 1, 10, WallRune, g.style.DefStyle)
+	go m.MovingWall(g, m.Width/2, (m.Height - m.Height/4), 3, 1, 10, WallRune, g.style.DefStyle)
 }
 
 func (m *GameMap) RandomLines(g *Game, numTimes int) {
 	//for i := 0; i < numTimes; i++ {
 	for {
-		NewRandomBitLine(g, m, 10, BitRune, BitStyle)
+		NewRandomBitLine(g, m, 10, BitRune, g.style.BitStyle)
 		time.Sleep(15 * time.Second)
 	}
 }
@@ -69,7 +69,7 @@ func (m *GameMap) RandomBits(g *Game, bitsGen, bitsMax int, dur time.Duration) {
 	for {
 		for i := 0; i < bitsGen; i++ {
 			if len(g.bits)-bitsGen < bitsMax {
-				newB := NewRandomBit(m, 10, BitRune, BitStyle)
+				newB := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
 				g.bits = append(g.bits, &newB)
 			}
 		}
@@ -82,7 +82,7 @@ func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration
 	for {
 		for i := 0; i < bitesGen; i++ {
 			if len(g.bites)-bitesGen < bitesMax {
-				newB := NewRandomBite(m, BiteStyle, random)
+				newB := NewRandomBite(m, g.style.BiteStyle, random)
 				g.bites = append(g.bites, &newB)
 			}
 		}

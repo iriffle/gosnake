@@ -169,26 +169,26 @@ func NewRandomBite(m *GameMap, style tcell.Style, random bool) Bite {
 
 // Trigger a bite explosion based on bite direction type
 func (b *Bite) ExplodeBite(g *Game, m *GameMap) {
-	b.style = BiteExplodedStyle
+	b.style = g.style.BiteExplodedStyle
 	biteMap := &GameMap{
 		Width:  m.Width,
 		Height: m.Height,
 	}
 	biteMap.InitMap()
-	biteMap.InitMapBoundary(WallRune, FloorRune, DefStyle)
+	biteMap.InitMapBoundary(WallRune, FloorRune, g.style.DefStyle)
 	g.maps = append(g.maps, biteMap)
 	time.Sleep(500 * time.Millisecond)
 	if b.dir == DirUp || b.dir == DirAll {
-		go b.ExplodeYUp(biteMap, m)
+		go b.ExplodeYUp(biteMap, m, g.style.BiteExplodedStyle)
 	}
 	if b.dir == DirDown || b.dir == DirAll {
-		go b.ExplodeYDown(biteMap, m)
+		go b.ExplodeYDown(biteMap, m, g.style.BiteExplodedStyle)
 	}
 	if b.dir == DirLeft || b.dir == DirAll {
-		go b.ExplodeXLeft(biteMap, m)
+		go b.ExplodeXLeft(biteMap, m, g.style.BiteExplodedStyle)
 	}
 	if b.dir == DirRight || b.dir == DirAll {
-		go b.ExplodeXRight(biteMap, m)
+		go b.ExplodeXRight(biteMap, m, g.style.BiteExplodedStyle)
 	}
 
 	time.Sleep(10 * time.Second)
@@ -207,41 +207,41 @@ func (b *Bite) ExplodeBite(g *Game, m *GameMap) {
 }
 
 // Create a bite explosion to the right
-func (b *Bite) ExplodeXRight(biteMap, m *GameMap) {
+func (b *Bite) ExplodeXRight(biteMap, m *GameMap, biteExplodedStyle tcell.Style) {
 	for x := b.x + 1; x < m.Width-1; x++ {
 		time.Sleep(30 * time.Millisecond)
 		biteMap.Objects[x][b.y].char = BiteExplodeRune
-		biteMap.Objects[x][b.y].style = BiteExplodedStyle
+		biteMap.Objects[x][b.y].style = biteExplodedStyle
 		biteMap.Objects[x][b.y].blocked = true
 	}
 }
 
 // Create a bit explosion to the left
-func (b *Bite) ExplodeXLeft(biteMap, m *GameMap) {
+func (b *Bite) ExplodeXLeft(biteMap, m *GameMap, biteExplodedStyle tcell.Style) {
 	for x := b.x - 1; x > 1; x-- {
 		time.Sleep(30 * time.Millisecond)
 		biteMap.Objects[x][b.y].char = BiteExplodeRune
-		biteMap.Objects[x][b.y].style = BiteExplodedStyle
+		biteMap.Objects[x][b.y].style = biteExplodedStyle
 		biteMap.Objects[x][b.y].blocked = true
 	}
 }
 
 // Create a bite explosion down
-func (b *Bite) ExplodeYDown(biteMap, m *GameMap) {
+func (b *Bite) ExplodeYDown(biteMap, m *GameMap, biteExplodedStyle tcell.Style) {
 	for y := b.y + 1; y < m.Height-1; y++ {
 		time.Sleep(30 * time.Millisecond)
 		biteMap.Objects[b.x][y].char = BiteExplodeRune
-		biteMap.Objects[b.x][y].style = BiteExplodedStyle
+		biteMap.Objects[b.x][y].style = biteExplodedStyle
 		biteMap.Objects[b.x][y].blocked = true
 	}
 }
 
 // Create a bite explosion up
-func (b *Bite) ExplodeYUp(biteMap, m *GameMap) {
+func (b *Bite) ExplodeYUp(biteMap, m *GameMap, biteExplodedStyle tcell.Style) {
 	for y := b.y - 1; y > 0; y-- {
 		time.Sleep(30 * time.Millisecond)
 		biteMap.Objects[b.x][y].char = BiteExplodeRune
-		biteMap.Objects[b.x][y].style = BiteExplodedStyle
+		biteMap.Objects[b.x][y].style = biteExplodedStyle
 		biteMap.Objects[b.x][y].blocked = true
 	}
 }
