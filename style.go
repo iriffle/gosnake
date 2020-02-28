@@ -41,13 +41,13 @@ type Style struct {
 func SetDefaultStyle() *Style {
 
 	s := Style{
-		DefStyle:          getStyle(DefBGStyle, DefFGStyle),
-		SelStyle:          getStyle(DefBGStyle, SelFGStyle),
-		BitStyle:          getStyle(Black, White),
-		BiteStyle:         getStyle(Black, Fuchsia),
-		BiteExplodedStyle: getStyle(Black, Red),
+		DefStyle:          GetStyle(DefBGStyle, DefFGStyle),
+		SelStyle:          GetStyle(DefBGStyle, SelFGStyle),
+		BitStyle:          GetStyle(Black, White),
+		BiteStyle:         GetStyle(Black, Fuchsia),
+		BiteExplodedStyle: GetStyle(Black, Red),
 
-		PlayerColors: []tcell.Style{getStyle(DefBGStyle, tcell.ColorGreen), getStyle(DefBGStyle, tcell.ColorRed), getStyle(DefBGStyle, tcell.ColorSilver), getStyle(DefBGStyle, tcell.ColorAqua)},
+		PlayerColors: []tcell.Style{GetStyle(DefBGStyle, tcell.ColorGreen), GetStyle(DefBGStyle, tcell.ColorRed), GetStyle(DefBGStyle, tcell.ColorSilver), GetStyle(DefBGStyle, tcell.ColorAqua)},
 	}
 
 	return &s
@@ -67,7 +67,7 @@ func SetNewStyle(defStyle, selStyle, bitStyle, biteStyle, biteExplodedStyle tcel
 }
 
 // Generate a tcell style using a provided background and foreground color
-func getStyle(bg tcell.Color, fg tcell.Color) tcell.Style {
+func GetStyle(bg tcell.Color, fg tcell.Color) tcell.Style {
 	style := tcell.StyleDefault.
 		Background(bg).
 		Foreground(fg)

@@ -17,13 +17,13 @@ const (
 
 // Bit struct
 type Bit struct {
-	Object
+	*Object
 	points int
 	state  int
 }
 
 type Bite struct {
-	Bit
+	*Bit
 	dir int
 }
 
@@ -32,14 +32,14 @@ type Bits interface {
 }
 
 // Create new Bit
-func NewBit(x, y, points int, char rune, state int, style tcell.Style) Bit {
+func NewBit(x, y, points int, char rune, state int, style tcell.Style) *Bit {
 	o := NewObject(x, y, char, style, false)
 	b := Bit{
 		o,
 		points,
 		state,
 	}
-	return b
+	return &b
 }
 
 // Create a horizontal line of bits of a given length
@@ -47,7 +47,7 @@ func NewBitLineH(g *Game, x, y, points, numBits int, char rune, style tcell.Styl
 	for i := 0; i < numBits; i++ {
 		x += 2
 		b := NewBit(x, y, points, char, 0, style)
-		g.bits = append(g.bits, &b)
+		g.bits = append(g.bits, b)
 	}
 }
 
@@ -56,13 +56,13 @@ func NewBitLineV(g *Game, x, y, points, numBits int, char rune, style tcell.Styl
 	for i := 0; i < numBits; i++ {
 		y += 1
 		b := NewBit(x, y, points, char, 0, style)
-		g.bits = append(g.bits, &b)
+		g.bits = append(g.bits, b)
 	}
 }
 
 // Generate random coordinates for a Bit
-func NewRandomBit(m *GameMap, points int, char rune, style tcell.Style) Bit {
-	var b Bit
+func NewRandomBit(m *GameMap, points int, char rune, style tcell.Style) *Bit {
+	var b *Bit
 	for {
 		randX := rand.Intn(m.Width)
 		randY := rand.Intn(m.Height)
@@ -115,19 +115,19 @@ func (b *Bit) Move(m *GameMap) {
 }
 
 // Create a new bite
-func NewBite(m *GameMap, x, y, points, dir, state int, char rune, style tcell.Style) Bite {
+func NewBite(m *GameMap, x, y, points, dir, state int, char rune, style tcell.Style) *Bite {
 	bit := NewBit(x, y, points, char, state, style)
 	bite := Bite{
 		bit,
 		dir,
 	}
-	return bite
+	return &bite
 }
 
 // Generate random coordinates and random explosion direction for a new bite
-func NewRandomBite(m *GameMap, style tcell.Style, random bool) Bite {
+func NewRandomBite(m *GameMap, style tcell.Style, random bool) *Bite {
 	var (
-		bite Bite
+		bite *Bite
 		dir  int
 		char rune
 	)

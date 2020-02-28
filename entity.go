@@ -6,20 +6,20 @@ import (
 
 // Entity struct
 type Entity struct {
-	pos       []Object
+	pos       []*Object
 	direction int
 	speed     int
 }
 
 // Create a new Entity
-func NewEntity(x, y, direction, speed int, char rune, style tcell.Style) Entity {
+func NewEntity(x, y, direction, speed int, char rune, style tcell.Style) *Entity {
 	o := NewObject(x, y, char, style, true)
 	e := Entity{
 		direction: direction,
 		speed:     speed,
 	}
 	e.pos = append(e.pos, o)
-	return e
+	return &e
 }
 
 // Move the entity's segments
@@ -58,6 +58,10 @@ func (e *Entity) CheckDirection(g *Game) (int, int) {
 	}
 
 	return dx, dy
+}
+
+func (e *Entity) GetDirection() int {
+	return e.direction
 }
 
 // Add a segment to the entity

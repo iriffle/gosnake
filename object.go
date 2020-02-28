@@ -13,7 +13,7 @@ type Object struct {
 }
 
 // Create new Object
-func NewObject(x, y int, char rune, style tcell.Style, blocked bool) Object {
+func NewObject(x, y int, char rune, style tcell.Style, blocked bool) *Object {
 	o := Object{
 		x,
 		y,
@@ -22,7 +22,7 @@ func NewObject(x, y int, char rune, style tcell.Style, blocked bool) Object {
 		char,
 		style,
 		blocked}
-	return o
+	return &o
 }
 
 // Move Object

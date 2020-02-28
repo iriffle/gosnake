@@ -8,7 +8,7 @@ import (
 
 // The player struct
 type Player struct {
-	Entity
+	*Entity
 	name  string
 	score int
 	count int
@@ -16,14 +16,14 @@ type Player struct {
 }
 
 // Make a new player
-func NewPlayer(x, y, score, direction int, char rune, name string, style tcell.Style) Player {
+func NewPlayer(x, y, score, direction int, char rune, name string, style tcell.Style) *Player {
 	e := NewEntity(x, y, direction, 1, char, style)
 	p := Player{
 		Entity: e,
 		name:   name,
 		score:  score,
 	}
-	return p
+	return &p
 }
 
 // Reset player's score and set back to middle of screen

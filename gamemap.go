@@ -70,7 +70,7 @@ func (m *GameMap) RandomBits(g *Game, bitsGen, bitsMax int, dur time.Duration) {
 		for i := 0; i < bitsGen; i++ {
 			if len(g.bits)-bitsGen < bitsMax {
 				newB := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
-				g.bits = append(g.bits, &newB)
+				g.bits = append(g.bits, newB)
 			}
 		}
 		time.Sleep(dur)
@@ -83,7 +83,7 @@ func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration
 		for i := 0; i < bitesGen; i++ {
 			if len(g.bites)-bitesGen < bitesMax {
 				newB := NewRandomBite(m, g.style.BiteStyle, random)
-				g.bites = append(g.bites, &newB)
+				g.bites = append(g.bites, newB)
 			}
 		}
 		time.Sleep(dur)
@@ -95,11 +95,11 @@ func (m *GameMap) MovingWall(g *Game, x, y, direction, speed, segments int, char
 	for i := 0; i < segments; i++ {
 		e.AddSegment(char, style)
 	}
-	g.entities = append(g.entities, &e)
+	g.entities = append(g.entities, e)
 	for {
 		dx, dy := e.CheckDirection(g)
 		if e.IsBlockedByMap(m, dx, dy) {
-			var newPos []Object
+			var newPos []*Object
 			for i, _ := range e.pos {
 				newPos = append(newPos, e.pos[len(e.pos)-1-i])
 			}

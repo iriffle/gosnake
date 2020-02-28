@@ -27,12 +27,6 @@ const (
 	SViewStartX = 0
 	SViewStartY = MapHeight + 1
 
-	// Console values
-	CViewWidth  = MapWidth
-	CViewHeight = 1
-	CViewStartX = 0
-	CViewStartY = SViewStartY + 2
-
 	// High Score count
 	MaxHighScores = 5
 
@@ -53,14 +47,14 @@ var (
 	// Current game map
 	m *GameMap
 
+	// Number of bits that should be present on map
+	numBits int = 5
+
 	// Text to be displayed at bottom for controls
 	controls        string = "w/s/a/d = up/down/left/right - esc = quit - f1 = restart - f12 = pause"
 	mainOptions            = []string{"Play", "High Scores", "Settings"}
 	playerOptions          = []string{"1 Player", "2 Player"}
 	gameModeOptions        = []string{"Basic", "Advanced", "Battle"}
-
-	// Number of bits that should be present on map
-	numBits int = 5
 )
 
 // Main game struct
@@ -71,8 +65,6 @@ type Game struct {
 	gview  *views.ViewPort // Game view port
 	sview  *views.ViewPort // Controls view port
 	sbar   *views.TextBar  // Controls text bar
-	//cview  *views.ViewPort // Console view port
-	//cbar   *views.TextBar  // Console text bar
 
 	// Game objects
 	players  []*Player  // All players in game
@@ -104,9 +96,9 @@ func (g *Game) InitScreen() {
 	s := SetDefaultStyle()
 	g.style = s
 
-	// Prepare screen
 	encoding.Register()
 
+	// Prepare screen
 	if screen, err := tcell.NewScreen(); err != nil {
 		log.Println("Failed to create screen: ", err)
 		os.Exit(1)
@@ -118,14 +110,9 @@ func (g *Game) InitScreen() {
 		g.screen = screen
 	}
 
-	// Enable mouse support. Not currently used
-	// if g.screen.HasMouse() {
-	// 	g.screen.EnableMouse()
-	// }
-
 	// Display cursor at bottom of screen. Seems to be an issue with
 	// Windows Terminal and hiding the cursor completely
-	g.screen.ShowCursor(CViewStartX, CViewStartY)
+	g.screen.ShowCursor(0, MapHeight-1)
 
 	// Create the main game viewport
 	g.gview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
@@ -227,7 +214,7 @@ func (g *Game) InitGame() {
 		y := (MapHeight / 2) + (i * 2)
 
 		for pName == "" {
-			pName = g.getPlayerName(i+1, m.Width, m.Height, g.style.DefStyle, g.style.SelStyle)
+			pName = g.getPlayerName(i+1, m.Width, m.Height)
 		}
 		if pName == "-quit-" {
 			g.QuitToMenu()
@@ -236,12 +223,12 @@ func (g *Game) InitGame() {
 
 		pStyle := g.style.PlayerColors[i]
 		p := NewPlayer(x, y, 0, (DirLeft - i), PlayerRune, pName, pStyle)
-		g.players = append(g.players, &p)
+		g.players = append(g.players, p)
 	}
 	g.players[0].score = 0
 	for i := 0; i < numBits; i++ {
 		b := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
-		g.bits = append(g.bits, &b)
+		g.bits = append(g.bits, b)
 	}
 	log.Println("Initialized game with ", strconv.Itoa(g.numPlayers), " players.")
 }
@@ -295,6 +282,11 @@ func (g *Game) QuitToMenu() {
 	g.state = MainMenu
 	g.screen.Fini()
 	g.state = MainMenu
+}
+
+func (g *Game) Restart() {
+	g.state = Restart
+	g.screen.Fini()
 }
 
 // Renders the menu screens and keeps track of which
@@ -363,7 +355,7 @@ func (g *Game) handlePlayer(p *Player) {
 					// Generate bits where player's body was during collision
 					for _, i := range p.pos {
 						b := NewBit(i.ox, i.oy, 10, BitRune, BitRandom, g.style.BitStyle)
-						g.bits = append(g.bits, &b)
+						g.bits = append(g.bits, b)
 					}
 
 					// Read high scores from file, compare against current scores
@@ -407,8 +399,8 @@ func (g *Game) handlePlayer(p *Player) {
 			// Calculate player's speed based on their score.
 			// Movement is done by causing the player goroutine
 			// to sleep for a set amount of time.
-			p.speed += p.score / 200
-			time.Sleep(g.moveInterval(p.speed, p.direction))
+			//p.speed += p.score / 200
+			time.Sleep(g.moveInterval(0, p.GetDirection()))
 
 		// Quit goroutine if signaled
 		case <-p.ch:
@@ -698,7 +690,7 @@ func (g *Game) removeBit(i int) {
 	g.bits = g.bits[:len(g.bits)-1]
 }
 
-func (g *Game) getPlayerName(playerNum, w, h int, headStyle, typeStyle tcell.Style) string {
+func (g *Game) getPlayerName(playerNum, w, h int) string {
 	var (
 		char       rune
 		chars      []rune
@@ -707,14 +699,10 @@ func (g *Game) getPlayerName(playerNum, w, h int, headStyle, typeStyle tcell.Sty
 	)
 
 	for {
-		// Reset screen and values
-		g.gview.Clear()
 		newChars = nil
 
-		// Render to screen
-		renderCenterStr(g.gview, w, h, headStyle, "Name of Player "+strconv.Itoa(playerNum)+":")
-		renderCenterStr(g.gview, w, h+2, typeStyle, charString+"|")
-		g.screen.Show()
+		// Render the player select screen
+		renderNameSelect(g, w, h, playerNum, charString)
 
 		// Get input
 		char = handleStringInput(g)

@@ -33,7 +33,7 @@ func handleInput(g *Game) {
 
 			// Restart game if F1 pressed
 		} else if ev.Key() == tcell.KeyF1 {
-			g.state = Restart
+			g.Restart()
 			return
 
 			// Pause game if F12 pressed

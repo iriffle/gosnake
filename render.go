@@ -51,6 +51,14 @@ func renderMenu(g *Game, m *Menu, style tcell.Style) {
 	g.screen.Show()
 }
 
+// Render the name selection screen
+func renderNameSelect(g *Game, w, h, playerNum int, charString string) {
+	g.gview.Clear()
+	renderCenterStr(g.gview, w, h, g.style.DefStyle, "Name of Player "+strconv.Itoa(playerNum)+":")
+	renderCenterStr(g.gview, w, h+2, g.style.SelStyle, charString+"|")
+	g.screen.Show()
+}
+
 // Render the High Score screen
 func renderHighScoreScreen(g *Game, style tcell.Style) {
 	g.gview.Clear()
