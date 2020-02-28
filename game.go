@@ -146,8 +146,12 @@ func (g *Game) MainMenu() {
 				os.Exit(0)
 			case 0:
 				cMenu = MenuPlayer
+				g.state = Play
+				break
 			case 1:
 				cMenu = MenuScore
+				g.state = Play
+				break
 			}
 		}
 
@@ -160,12 +164,10 @@ func (g *Game) MainMenu() {
 				cMenu = 0
 			case 0:
 				g.numPlayers = 1
-				g.state = Play
-				break
+				cMenu = MenuProfile
 			case 1:
 				g.numPlayers = 2
-				g.state = Play
-				break
+				cMenu = MenuProfile
 			}
 		}
 
@@ -460,6 +462,30 @@ func (g *Game) handleLevel(m *GameMap) {
 				log.Println(p.name + " reached level 4!")
 			}
 		}
+	}
+}
+
+func (g *Game) readData() {
+	// Open the scoreFile
+	f, err := os.Open(g.scoreFile)
+	if err != nil {
+		log.Println(err, f)
+	}
+
+	// Close the scoreFile on exit
+	defer func() {
+		if err = f.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	// Read scoreFile one line at a time
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+	}
+	err = s.Err()
+	if err != nil {
+		log.Println(err)
 	}
 }
 

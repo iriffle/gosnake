@@ -1,7 +1,5 @@
 package main
 
-import ()
-
 const (
 	// Game states
 	Play = iota
@@ -17,6 +15,7 @@ const (
 	MenuPlayer
 	MenuMode
 	MenuScore
+	MenuProfile
 	MenuSettings
 )
 
