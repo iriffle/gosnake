@@ -72,7 +72,7 @@ type Game struct {
 	bites    []*Bite    // All bites currently  in game (triangles)
 	bits     []*Bit     // All bits currently in game (square dots)
 	maps     []*GameMap // All current game maps, including maps used for bites
-	style    *Style     // Colors usable for players
+	style    *Style     // The game's current color styles
 
 	// Score tracking
 	scores    [][]string // 1 player scores
@@ -80,12 +80,12 @@ type Game struct {
 	scoreFile string     // File that scores are saved to
 
 	// Misc variables
-	state      int // Game state
-	mode       int // Game mode
-	level      int // Current game level
-	numPlayers int // Chosen number of players for game
-	fps        int // Game FPS
-	frames     int
+	state      int       // Game state
+	mode       int       // Game mode
+	level      int       // Current game level
+	numPlayers int       // Chosen number of players for game
+	fps        int       // Game FPS
+	frames     int       // Used to track game FPS
 	bitQuit    chan bool // Used to close handlebits goroutine
 }
 
