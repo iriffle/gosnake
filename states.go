@@ -34,3 +34,11 @@ const (
 	Advanced
 	Battle
 )
+
+const (
+	// Levels
+	Level2 = 200
+	Level3 = 400
+	Level4 = 600
+	Level5 = 800
+)

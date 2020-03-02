@@ -10,9 +10,6 @@ import (
 )
 
 var (
-	// Saved high score file
-	scoreFile = "hs.dat"
-
 	// Used if log flag provided
 	logFile string
 
@@ -20,7 +17,7 @@ var (
 	lastGameState  int = Play
 	lastNumPlayers int
 
-	initScreen = false
+	files = []string{"1.dat", "2.dat", "profiles.dat"}
 )
 
 func main() {
@@ -47,19 +44,10 @@ func main() {
 		log.SetOutput(ioutil.Discard)
 	}
 
-	// Check if high score file exists. If not then create it
-	_, err := os.Stat(scoreFile)
-	if os.IsNotExist(err) {
-		f, err := os.Create(scoreFile)
-		if err != nil {
-			log.Println(err, f)
-		}
-	}
-
 	// Game loop
 	for {
 		// Create game
-		g := &Game{numPlayers: lastNumPlayers, scoreFile: scoreFile}
+		g := &Game{numPlayers: lastNumPlayers, files: files}
 
 		// Initialize screen
 		g.InitScreen()

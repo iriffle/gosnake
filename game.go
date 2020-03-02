@@ -67,17 +67,19 @@ type Game struct {
 	sbar   *views.TextBar  // Controls text bar
 
 	// Game objects
-	players  []*Player  // All players in game
-	entities []*Entity  // All entities currently in game
-	bites    []*Bite    // All bites currently  in game (triangles)
-	bits     []*Bit     // All bits currently in game (square dots)
-	maps     []*GameMap // All current game maps, including maps used for bites
-	style    *Style     // The game's current color styles
+	players  []*Player // All players in game
+	entities []*Entity // All entities currently in game
+	bites    []*Bite   // All bites currently  in game (triangles)
+	bits     []*Bit    // All bits currently in game (square dots)
+	gameMap  *GameMap  // Game map
+	biteMap  *GameMap  // Bite map
+	style    *Style    // The game's current color styles
 
-	// Score tracking
-	scores    [][]string // 1 player scores
-	scores2   [][]string // 2 player scores
-	scoreFile string     // File that scores are saved to
+	// Score and profile tracking
+	scores   [][]string // 1 player scores
+	scores2  [][]string // 2 player scores
+	profiles [][]string
+	files    []string
 
 	// Misc variables
 	state      int       // Game state
@@ -112,7 +114,7 @@ func (g *Game) InitScreen() {
 
 	// Display cursor at bottom of screen. Seems to be an issue with
 	// Windows Terminal and hiding the cursor completely
-	g.screen.ShowCursor(0, MapHeight-1)
+	g.screen.ShowCursor(0, MapHeight+3)
 
 	// Create the main game viewport
 	g.gview = views.NewViewPort(g.screen, MapStartX, MapStartY, MapWidth, MapHeight)
@@ -132,7 +134,7 @@ func (g *Game) MainMenu() {
 	cMenu := MenuMain
 
 	// Read high scores from scoreFile
-	g.readScores()
+	g.scores = readData("1.dat")
 
 	// Run main menu until play or quit
 	for g.state != Play {
@@ -150,7 +152,6 @@ func (g *Game) MainMenu() {
 				break
 			case 1:
 				cMenu = MenuScore
-				g.state = Play
 				break
 			}
 		}
@@ -202,10 +203,18 @@ func (g *Game) InitGame() {
 		X:      MapStartX,
 		Y:      MapStartY,
 	}
-	g.maps = append(g.maps, m)
+	g.gameMap = m
 	m.InitMap()
 	m.InitMapBoundary(WallRune, FloorRune, g.style.DefStyle)
 	m.InitLevel1(g)
+
+	biteMap := &GameMap{
+		Width:  m.Width,
+		Height: m.Height,
+	}
+	biteMap.InitMap()
+	biteMap.InitMapBoundary(WallRune, FloorRune, g.style.DefStyle)
+	g.biteMap = biteMap
 
 	// Set player starting x value to middle of map
 	x := MapWidth / 2
@@ -270,23 +279,25 @@ func (g *Game) RunGame() {
 		p.ch <- true
 	}
 
-	//g.bitQuit <- true
+	g.bitQuit <- true
 }
 
-// Completely quit game back to terminal
+// QuitGame completely exits the game back to terminal.
 func (g *Game) QuitGame() {
 	g.state = Quit
 	g.screen.Fini()
 	os.Exit(0)
 }
 
+// QuitToMenu quits the current game and returns to the Main Menu.
 func (g *Game) QuitToMenu() {
 	g.state = MainMenu
 	g.screen.Fini()
 	g.state = MainMenu
 }
 
-func (g *Game) Restart() {
+// RestartGame restarts the game in the same game mode with same players.
+func (g *Game) RestartGame() {
 	g.state = Restart
 	g.screen.Fini()
 }
@@ -349,7 +360,7 @@ func (g *Game) handlePlayer(p *Player) {
 			dx, dy := p.CheckDirection(g)
 
 			// Check if player is blocked at all
-			if p.IsBlocked(m, g.maps, g.entities, g.players, dx, dy) {
+			if p.IsBlocked(m, g.biteMap, g.entities, g.players, dx, dy) {
 
 				// Run if in 2 player mode
 				if g.numPlayers > 1 {
@@ -362,10 +373,10 @@ func (g *Game) handlePlayer(p *Player) {
 
 					// Read high scores from file, compare against current scores
 					// and make changes if necessary
-					g.readScores()
+					g.scores2 = readData(g.files[1])
 					g.scores2, scoreChange = g.checkScores()
 					if scoreChange {
-						g.writeScores()
+						writeData(g.files[1], g.scores2)
 					}
 
 					// Reset the player
@@ -379,10 +390,10 @@ func (g *Game) handlePlayer(p *Player) {
 
 					// Read high scores from file, compare against current scores
 					// and make changes if necessary
-					g.readScores()
+					g.scores = readData(g.files[0])
 					g.scores, scoreChange = g.checkScores()
 					if scoreChange {
-						g.writeScores()
+						writeData(g.files[0], g.scores)
 					}
 
 					// Wait a short period of time then restart the game
@@ -417,10 +428,10 @@ func (g *Game) handleBits(m *GameMap) {
 		select {
 		default:
 			// Move bits in a random direction after a set amount of time
-			for _, bit := range g.bits {
-				switch bit.state {
+			for i, _ := range g.bits {
+				switch g.bits[i].state {
 				case BitRandom:
-					bit.Move(m)
+					g.bits[i].Move(m)
 				}
 			}
 			// Wait a set amount of time
@@ -436,140 +447,33 @@ func (g *Game) handleBits(m *GameMap) {
 // Change level based on player score
 func (g *Game) handleLevel(m *GameMap) {
 	for _, p := range g.players {
-		switch p.score {
-
-		// Level 2
-		case 200:
+		if p.score >= Level2 {
 			if g.level < 2 {
 				m.InitLevel2(g)
 				g.level = 2
 				log.Println(p.name + " reached level 2!")
 			}
-
-		// Level 3
-		case 400:
+		}
+		if p.score >= Level3 {
 			if g.level < 3 {
 				m.InitLevel3(g)
 				g.level = 3
 				log.Println(p.name + " reached level 3!")
 			}
-
-		// Level 4
-		case 600:
+		}
+		if p.score >= Level4 {
 			if g.level < 4 {
 				m.InitLevel4(g)
 				g.level = 4
 				log.Println(p.name + " reached level 4!")
 			}
 		}
-	}
-}
-
-func (g *Game) readData() {
-	// Open the scoreFile
-	f, err := os.Open(g.scoreFile)
-	if err != nil {
-		log.Println(err, f)
-	}
-
-	// Close the scoreFile on exit
-	defer func() {
-		if err = f.Close(); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	// Read scoreFile one line at a time
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-	}
-	err = s.Err()
-	if err != nil {
-		log.Println(err)
-	}
-}
-
-// Read high scores from scoreFile
-func (g *Game) readScores() {
-
-	// Clear currently cached scores
-	g.scores = nil
-	g.scores2 = nil
-
-	twoPlayer := false
-
-	// Open the scoreFile
-	f, err := os.Open(g.scoreFile)
-	if err != nil {
-		log.Println(err, f)
-	}
-
-	// Close the scoreFile on exit
-	defer func() {
-		if err = f.Close(); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	// Read scoreFile one line at a time
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-
-		// If hash symbol read then start appending scores
-		// to the 2 player scores variable (g.scores2)
-		if s.Text() == "#" {
-			twoPlayer = true
-			continue
-		}
-
-		// Split the scores into 3 values, split by colons
-		score := strings.Split(s.Text(), ":")
-
-		// Append the scores based on number of players
-		if !(twoPlayer) {
-			g.scores = append(g.scores, score)
-		} else {
-			g.scores2 = append(g.scores2, score)
-		}
-	}
-	err = s.Err()
-	if err != nil {
-		log.Println(err)
-	}
-}
-
-// Write high scores to scoreFile
-func (g *Game) writeScores() {
-
-	// Open score file overwriting any previous data
-	f, err := os.OpenFile(g.scoreFile, os.O_CREATE, 0660)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	// Close scoreFile on exit
-	defer func() {
-		if err = f.Close(); err != nil {
-			fmt.Println(err)
-		}
-	}()
-
-	// Write the scores for 1 player and 2 player separated
-	// by a hash symbol
-	g.writeScore(f, g.scores)
-	_, err = fmt.Fprintln(f, "#")
-	if err != nil {
-		log.Println(err)
-	}
-	g.writeScore(f, g.scores2)
-}
-
-// Loop through a slice of scores and write to file. Used by writeScores
-func (g *Game) writeScore(f *os.File, scores [][]string) {
-	for _, v := range scores {
-		_, err := fmt.Fprintln(f, strings.Join(v[:], ":"))
-		if err != nil {
-			log.Println(err)
+		if p.score >= Level5 {
+			if g.level < 5 {
+				//m.InitLevel5(g)
+				g.level = 5
+				log.Println(p.name + " reached level 5!")
+			}
 		}
 	}
 }
@@ -689,33 +593,6 @@ func (g *Game) checkScores() ([][]string, bool) {
 	return scores, scoreChange
 }
 
-// Calculate FPS
-func (g *Game) getFPS() {
-	time.AfterFunc(1*time.Second, func() {
-		g.fps = g.frames
-		g.frames = 0
-	})
-}
-
-// Calculate speed of player
-func (g *Game) moveInterval(speed, direction int) time.Duration {
-	ms := 80 //120
-	switch direction {
-	case DirUp, DirDown:
-		ms = 140 //180
-	}
-	//ms -= (speed / 100)
-	return time.Duration(ms) * time.Millisecond
-}
-
-// Remove a bit from game
-func (g *Game) removeBit(i int) {
-	b := &Bit{}
-	g.bits[i] = g.bits[len(g.bits)-1]
-	g.bits[len(g.bits)-1] = b
-	g.bits = g.bits[:len(g.bits)-1]
-}
-
 func (g *Game) getPlayerName(playerNum, w, h int) string {
 	var (
 		char       rune
@@ -749,6 +626,93 @@ func (g *Game) getPlayerName(playerNum, w, h int) string {
 		} else {
 			chars = append(chars, char)
 			charString = string(chars)
+		}
+	}
+}
+
+// Calculate FPS
+func (g *Game) getFPS() {
+	time.AfterFunc(1*time.Second, func() {
+		g.fps = g.frames
+		g.frames = 0
+	})
+}
+
+// Calculate speed of player
+func (g *Game) moveInterval(speed, direction int) time.Duration {
+	ms := 80 //120
+	switch direction {
+	case DirUp, DirDown:
+		ms = 140 //180
+	}
+	//ms -= (speed / 100)
+	return time.Duration(ms) * time.Millisecond
+}
+
+// Remove a bit from game
+func (g *Game) removeBit(i int) {
+	g.bits[i] = g.bits[len(g.bits)-1]
+	g.bits[len(g.bits)-1] = nil
+	g.bits = g.bits[:len(g.bits)-1]
+}
+
+func readData(file string) [][]string {
+	var data [][]string
+
+	// Check if high score file exists. If not then create it
+	_, err := os.Stat(file)
+	if os.IsNotExist(err) {
+		f, err := os.Create(file)
+		if err != nil {
+			log.Println(err, f)
+		}
+	}
+
+	// Open the data file
+	f, err := os.Open(file)
+	if err != nil {
+		log.Println(err, f)
+	}
+
+	// Close the data file on exit
+	defer func() {
+		if err = f.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	// Read data file one line at a time
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		row := strings.Split(s.Text(), ":")
+		data = append(data, row)
+	}
+	err = s.Err()
+	if err != nil {
+		log.Println(err)
+	}
+	return data
+}
+
+func writeData(file string, data [][]string) {
+	// Open data file overwriting any previous data
+	f, err := os.OpenFile(file, os.O_CREATE, 0660)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Close the file on exit
+	defer func() {
+		if err = f.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	// Write the data
+	for _, v := range data {
+		_, err := fmt.Fprintln(f, strings.Join(v[:], ":"))
+		if err != nil {
+			log.Println(err)
 		}
 	}
 }

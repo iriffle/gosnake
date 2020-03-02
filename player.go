@@ -57,8 +57,8 @@ func (p *Player) IsOnBit(g *Game) {
 // and see if there is a match
 func (p *Player) CheckBitPos(bits []*Bit) (bool, int) {
 	i := 0
-	for i, bit := range bits {
-		if p.pos[0].x == bit.x && p.pos[0].y == bit.y {
+	for i, _ := range bits {
+		if p.pos[0].x == bits[i].x && p.pos[0].y == bits[i].y {
 			return true, i
 		}
 	}
@@ -86,12 +86,12 @@ func (p *Player) IsOnBite(g *Game, m *GameMap) {
 		for i := 0; i < 4; i++ {
 			p.AddSegment(p.pos[0].char, p.pos[0].style)
 		}
-		go b.ExplodeBite(g, m)
+		go b.ExplodeBite(g, m, g.biteMap)
 	}
 }
 
 // Check if player is blocked
-func (p *Player) IsBlocked(m *GameMap, bites []*GameMap, entities []*Entity, players []*Player, dx, dy int) bool {
+func (p *Player) IsBlocked(m *GameMap, biteMap *GameMap, entities []*Entity, players []*Player, dx, dy int) bool {
 	if p.IsBlockedByPlayer(players, dx, dy) {
 		return true
 	}
@@ -104,18 +104,17 @@ func (p *Player) IsBlocked(m *GameMap, bites []*GameMap, entities []*Entity, pla
 	if p.IsBlockedByEntity(entities, players, dx, dy) {
 		return true
 	}
-	for _, bite := range bites {
-		if p.IsBlockedByMap(bite, dx, dy) {
-			return true
-		}
+	if p.IsBlockedByMap(biteMap, dx, dy) {
+		return true
 	}
+
 	return false
 }
 
 // Check if player is blocked by its own body
 func (p *Player) IsBlockedBySelf(dx, dy int) bool {
 	for a, i := range p.pos {
-		if p.pos[0].x+dx == i.x && p.pos[0].y+dy == i.y && !(a == 0) {
+		if p.pos[0].x+dx == i.x && p.pos[0].y+dy == i.y && !(a == 0) && !(a == 1) {
 			return true
 		}
 	}

@@ -53,8 +53,17 @@ func (m *GameMap) InitLevel3(g *Game) {
 }
 
 func (m *GameMap) InitLevel4(g *Game) {
-	go m.MovingWall(g, m.Width/2, m.Height/4, 2, 1, 10, WallRune, g.style.DefStyle)
-	go m.MovingWall(g, m.Width/2, (m.Height - m.Height/4), 3, 1, 10, WallRune, g.style.DefStyle)
+	go m.MovingWall(g, 1+15, m.Height/4, DirLeft, 2, 15, WallRune, g.style.DefStyle)
+	go m.MovingWall(g, m.Width-15, (m.Height - m.Height/4), DirRight, 2, 15, WallRune, g.style.DefStyle)
+}
+
+func (m *GameMap) InitLevel5(g *Game) {
+	// go m.MovingWall(g, m.Width/4, 6, DirUp, 1, 5, WallRune, g.style.DefStyle)
+	// go m.MovingWall(g, (m.Width/4 + 1), 6, DirUp, 1, 5, WallRune, g.style.DefStyle)
+	// go m.MovingWall(g, (m.Width/4 + 2), 6, DirUp, 1, 5, WallRune, g.style.DefStyle)
+	// go m.MovingWall(g, (m.Width - m.Width/4), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle)
+	// go m.MovingWall(g, ((m.Width - m.Width/4) - 1), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle)
+	// go m.MovingWall(g, ((m.Width - m.Width/4) - 2), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle)
 }
 
 func (m *GameMap) RandomLines(g *Game, numTimes int) {

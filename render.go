@@ -13,9 +13,9 @@ import (
 func renderAll(g *Game, style tcell.Style, m *GameMap) {
 	g.gview.Clear()
 	renderMap(g.gview, m)
-	for _, b := range g.maps {
-		renderMap(g.gview, b)
-	}
+
+	renderMap(g.gview, g.biteMap)
+
 	if g.numPlayers == 1 {
 		renderLevel(g.gview, g.level, m.Width, m.Height, g.style.SelStyle)
 	}
@@ -33,11 +33,7 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 func renderMap(v *views.ViewPort, m *GameMap) {
 	for x := 0; x < m.Width; x++ {
 		for y := 0; y < m.Height; y++ {
-			if m.Objects[x][y].blocked == true {
-				renderRune(v, x, y, m.Objects[x][y].style, m.Objects[x][y].char)
-			} else {
-				renderRune(v, x, y, m.Objects[x][y].style, m.Objects[x][y].char)
-			}
+			renderRune(v, x, y, m.Objects[x][y].style, m.Objects[x][y].char)
 		}
 	}
 }
