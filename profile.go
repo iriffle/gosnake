@@ -1,31 +1,35 @@
 package main
 
-import "github.com/gdamore/tcell"
+import (
+	"encoding/json"
+)
 
 type Profile struct {
-	name   string
-	player *Player
-	style  tcell.Style
+	Name  string
+	Color string
 }
 
-func NewProfile(name string, style tcell.Style) *Profile {
+func NewProfile(name, color string) *Profile {
 	p := Profile{
-		name:  name,
-		style: style,
+		Name:  name,
+		Color: color,
 	}
-
 	return &p
 }
 
-func (p *Profile) SetName(name string) {
-	p.name = name
+func (p *Profile) Encode() ([]byte, error) {
+	var jsonData []byte
+	jsonData, err := json.Marshal(p)
+	if err != nil {
+		return jsonData, err
+	}
+	return jsonData, nil
 }
 
-func (p *Profile) SetPlayer(player *Player) {
-	p.player = player
-	p.player.name = p.name
-}
-
-func (p *Profile) SetStyle(style tcell.Style) {
-	p.style = style
+func (p *Profile) Decode(jsonData []byte) error {
+	err := json.Unmarshal(jsonData, p)
+	if err != nil {
+		return err
+	}
+	return nil
 }

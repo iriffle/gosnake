@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/google/logger"
 	"log"
 	"os"
 	"strconv"
@@ -57,7 +58,7 @@ var (
 	gameModeOptions        = []string{"Basic", "Advanced", "Battle"}
 )
 
-// Main game struct
+// Game is the main game struct and is used to store and compute general game logic.
 type Game struct {
 
 	// Screen and views
@@ -66,7 +67,7 @@ type Game struct {
 	sview  *views.ViewPort // Controls view port
 	sbar   *views.TextBar  // Controls text bar
 
-	// Game objects
+	// Game structs
 	players  []*Player // All players in game
 	entities []*Entity // All entities currently in game
 	bites    []*Bite   // All bites currently  in game (triangles)
@@ -91,7 +92,7 @@ type Game struct {
 	bitQuit    chan bool // Used to close handlebits goroutine
 }
 
-// Initialize the screen and set views/bars and styles
+// InitScreen initializes the tcell screen and sets views/bars and styles.
 func (g *Game) InitScreen() {
 
 	// Set style
@@ -102,14 +103,15 @@ func (g *Game) InitScreen() {
 
 	// Prepare screen
 	if screen, err := tcell.NewScreen(); err != nil {
-		log.Println("Failed to create screen: ", err)
+		logger.Errorf("Failed to create screen: %v", err)
 		os.Exit(1)
 	} else if err = screen.Init(); err != nil {
-		log.Println("Failed to initialize screen: ", err)
+		logger.Errorf("Failed to initialize screen: %v", err)
 		os.Exit(1)
 	} else {
 		screen.SetStyle(g.style.DefStyle)
 		g.screen = screen
+		logger.Info("Intialized screen...")
 	}
 
 	// Display cursor at bottom of screen. Seems to be an issue with
@@ -126,7 +128,7 @@ func (g *Game) InitScreen() {
 	g.sbar.SetStyle(g.style.DefStyle)
 }
 
-// Launch main menu screen
+// MainMenu displays and handles input for the Main Menu.
 func (g *Game) MainMenu() {
 
 	// Setup main menu
@@ -135,12 +137,14 @@ func (g *Game) MainMenu() {
 
 	// Read high scores from scoreFile
 	g.scores = readData("1.dat")
+	logger.Infof("Loaded current high scores: %v", g.scores)
 
 	// Run main menu until play or quit
 	for g.state != Play {
 
 		// Display the "Main Menu" menu
 		if cMenu == MenuMain {
+			logger.Info("Main menu page...")
 			i := g.handleMenu(mainOptions)
 			switch i {
 			case -1:
@@ -189,7 +193,7 @@ func (g *Game) MainMenu() {
 	}
 }
 
-// Initialize game
+// InitGame initializes variables used to start a new game.
 func (g *Game) InitGame() {
 
 	// Initialize game states
@@ -207,6 +211,7 @@ func (g *Game) InitGame() {
 	m.InitMap()
 	m.InitMapBoundary(WallRune, FloorRune, g.style.DefStyle)
 	m.InitLevel1(g)
+	logger.Info("Created game map and set to level 1.")
 
 	biteMap := &GameMap{
 		Width:  m.Width,
@@ -241,10 +246,10 @@ func (g *Game) InitGame() {
 		b := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
 		g.bits = append(g.bits, b)
 	}
-	log.Println("Initialized game with ", strconv.Itoa(g.numPlayers), " players.")
+	logger.Info("Initialized game with ", strconv.Itoa(g.numPlayers), " players.")
 }
 
-// Run the actual game
+// RunGame runs the main game loop.
 func (g *Game) RunGame() {
 
 	// Run a goroutine for each player to handle their own loop
@@ -278,14 +283,13 @@ func (g *Game) RunGame() {
 	for _, p := range g.players {
 		p.ch <- true
 	}
-
-	g.bitQuit <- true
 }
 
 // QuitGame completely exits the game back to terminal.
 func (g *Game) QuitGame() {
 	g.state = Quit
 	g.screen.Fini()
+	logger.Info("Quitting the game...")
 	os.Exit(0)
 }
 
@@ -293,16 +297,16 @@ func (g *Game) QuitGame() {
 func (g *Game) QuitToMenu() {
 	g.state = MainMenu
 	g.screen.Fini()
-	g.state = MainMenu
 }
 
 // RestartGame restarts the game in the same game mode with same players.
 func (g *Game) RestartGame() {
 	g.state = Restart
+	logger.Info("Restarting the game...")
 	g.screen.Fini()
 }
 
-// Renders the menu screens and keeps track of which
+// handleMenu renders the menu screens and keeps track of which
 // menu item is currently selected and which to move to
 // based on input.
 func (g *Game) handleMenu(options []string) int {
@@ -320,7 +324,7 @@ func (g *Game) handleMenu(options []string) int {
 	return choice
 }
 
-// Pause game until unpaused
+// handlePause controls the game and input during the "paused" state.
 func (g *Game) handlePause() {
 	chQuit := false
 
@@ -332,6 +336,7 @@ func (g *Game) handlePause() {
 				chQuit = true
 			}
 		}
+		logger.Info("Pausing game...")
 
 		// Render "PAUSED" to screen
 		renderCenterStr(g.gview, MapWidth, MapHeight-4, g.style.BitStyle, "PAUSED")
@@ -343,11 +348,13 @@ func (g *Game) handlePause() {
 				go g.handlePlayer(p)
 			}
 			go g.handleBits(m)
+			logger.Info("Resuming game...")
 		}
 	}
 }
 
-// Player movevement loop
+// handlePlayer is the player loop and handles a player's
+// state and  interaction with objects and the game map.
 func (g *Game) handlePlayer(p *Player) {
 	var scoreChange bool
 
@@ -422,7 +429,7 @@ func (g *Game) handlePlayer(p *Player) {
 	}
 }
 
-// Bit movement loop
+// handleBits causes bits on map to move in a random direction in timed intervals.
 func (g *Game) handleBits(m *GameMap) {
 	for {
 		select {
@@ -444,42 +451,51 @@ func (g *Game) handleBits(m *GameMap) {
 	}
 }
 
-// Change level based on player score
+// handleLevel checks the current score against the current level and
+// changes the level if a certain score is reached.
 func (g *Game) handleLevel(m *GameMap) {
 	for _, p := range g.players {
+
+		// Level 2
 		if p.score >= Level2 {
 			if g.level < 2 {
 				m.InitLevel2(g)
 				g.level = 2
-				log.Println(p.name + " reached level 2!")
+				logger.Info(p.name + " reached level 2!")
 			}
 		}
+
+		// Level 3
 		if p.score >= Level3 {
 			if g.level < 3 {
 				m.InitLevel3(g)
 				g.level = 3
-				log.Println(p.name + " reached level 3!")
+				logger.Info(p.name + " reached level 3!")
 			}
 		}
+
+		// Level 4
 		if p.score >= Level4 {
 			if g.level < 4 {
 				m.InitLevel4(g)
 				g.level = 4
-				log.Println(p.name + " reached level 4!")
+				logger.Info(p.name + " reached level 4!")
 			}
 		}
+
+		// Level 5
 		if p.score >= Level5 {
 			if g.level < 5 {
 				//m.InitLevel5(g)
 				g.level = 5
-				log.Println(p.name + " reached level 5!")
+				logger.Info(p.name + " reached level 5!")
 			}
 		}
 	}
 }
 
-// Compare player's score against high score list to see if a new
-// high score has been reached.
+// checkScores compares a player's score against the high score list
+// to see if a new high score has been reached.
 func (g *Game) checkScores() ([][]string, bool) {
 
 	var (
@@ -517,16 +533,18 @@ func (g *Game) checkScores() ([][]string, bool) {
 				// integer to compare
 				scoreStr, err := strconv.Atoi(s[2])
 				if err != nil {
-					log.Println(err)
+					logger.Errorf("Error converting string to int: %v", err)
 				}
+				pScoreStr := strconv.Itoa(p.score)
 
 				// Check if player's score is higher than current score from list
 				if p.score > scoreStr {
+					logger.Infof("Score change: %v > %v", pScoreStr, s)
 					var newScore []string
 					scoreChange = true
 
 					// Create a formatted score of "number of players:player name:score"
-					newScore = append(newScore, numPlayers, p.name, strconv.Itoa(p.score))
+					newScore = append(newScore, numPlayers, p.name, pScoreStr)
 
 					// Append the previous high scores to the new high score list up until
 					// where the newest high score should be inserted
@@ -544,15 +562,17 @@ func (g *Game) checkScores() ([][]string, bool) {
 							newScores = append(newScores, scores[a])
 						}
 					}
+					logger.Infof("newScores: %v", newScores)
 					break
 
 					// If the player's score is less than any of the previous high scores
 					// but the number of previous high scores is less than the maximum
 					// number of high scores saved, then add the score to the end of the list.
-				} else if len(scores) < MaxHighScores {
+				} else if len(scores) < MaxHighScores && p.score > 0 {
+					logger.Infof("Score added because MaxHighScores not reached: %v", pScoreStr)
 					var newScore []string
 					scoreChange = true
-					newScore = append(newScore, numPlayers, p.name, strconv.Itoa(p.score))
+					newScore = append(newScore, numPlayers, p.name, pScoreStr)
 					newScores = append(scores, newScore)
 					break
 				}
@@ -561,6 +581,7 @@ func (g *Game) checkScores() ([][]string, bool) {
 
 		// Check for changes in high score list
 		if scoreChange {
+			logger.Infof("High scores original: %v", scores)
 
 			// Reset scores list
 			scores = nil
@@ -578,21 +599,26 @@ func (g *Game) checkScores() ([][]string, bool) {
 					scores = append(scores, newScores[i])
 				}
 			}
+			logger.Infof("High scores changed: %v", scores)
 		}
 
 		// If no previous high scores present then add all player scores
 		// to high score list
 	} else {
 		for _, p := range g.players {
-			var newScore []string
-			scoreChange = true
-			newScore = append(newScore, strconv.Itoa(g.numPlayers), p.name, strconv.Itoa(p.score))
-			scores = append(scores, newScore)
+			if p.score > 0 {
+				var newScore []string
+				scoreChange = true
+				newScore = append(newScore, strconv.Itoa(g.numPlayers), p.name, strconv.Itoa(p.score))
+				scores = append(scores, newScore)
+			}
 		}
+		logger.Infof("Adding alls scores due to no previous scores present: %v", scores)
 	}
 	return scores, scoreChange
 }
 
+// getPlayerName allows a player to input their name.
 func (g *Game) getPlayerName(playerNum, w, h int) string {
 	var (
 		char       rune
@@ -630,7 +656,7 @@ func (g *Game) getPlayerName(playerNum, w, h int) string {
 	}
 }
 
-// Calculate FPS
+// getFPS tracks variables used to calculate the FPS of the game.
 func (g *Game) getFPS() {
 	time.AfterFunc(1*time.Second, func() {
 		g.fps = g.frames
@@ -638,7 +664,11 @@ func (g *Game) getFPS() {
 	})
 }
 
-// Calculate speed of player
+// moveInterval calculates a player's movement speed. Player speed is created by
+// sleeping the player's loop for a set amount of time. The up and down direction
+// have a decrease in speed in an attempt to even out the direction movement speeds.
+// because of the way the terminal is designed vertical movement is normally much
+// faster than horizontal.
 func (g *Game) moveInterval(speed, direction int) time.Duration {
 	ms := 80 //120
 	switch direction {
@@ -649,35 +679,37 @@ func (g *Game) moveInterval(speed, direction int) time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
-// Remove a bit from game
+// removeBit removes a particular bit from the game's bit slice in order to remove
+// that bit from the game.
 func (g *Game) removeBit(i int) {
 	g.bits[i] = g.bits[len(g.bits)-1]
 	g.bits[len(g.bits)-1] = nil
 	g.bits = g.bits[:len(g.bits)-1]
 }
 
+// readData reads game data from a data file and adds the values to a nested slice.
 func readData(file string) [][]string {
 	var data [][]string
 
 	// Check if high score file exists. If not then create it
 	_, err := os.Stat(file)
 	if os.IsNotExist(err) {
-		f, err := os.Create(file)
+		_, err := os.Create(file)
 		if err != nil {
-			log.Println(err, f)
+			logger.Errorf("Error creating file: %v", err)
 		}
 	}
 
 	// Open the data file
 	f, err := os.Open(file)
 	if err != nil {
-		log.Println(err, f)
+		logger.Errorf("Error opening file: %v", err)
 	}
 
 	// Close the data file on exit
 	defer func() {
 		if err = f.Close(); err != nil {
-			log.Println(err)
+			logger.Errorf("Error closing file: %v", err)
 		}
 	}()
 
@@ -694,6 +726,7 @@ func readData(file string) [][]string {
 	return data
 }
 
+// writeData takes data from a nested slice and writes it to a data file.
 func writeData(file string, data [][]string) {
 	// Open data file overwriting any previous data
 	f, err := os.OpenFile(file, os.O_CREATE, 0660)
@@ -712,7 +745,7 @@ func writeData(file string, data [][]string) {
 	for _, v := range data {
 		_, err := fmt.Fprintln(f, strings.Join(v[:], ":"))
 		if err != nil {
-			log.Println(err)
+			logger.Errorf("Error writing data: %v", err)
 		}
 	}
 }

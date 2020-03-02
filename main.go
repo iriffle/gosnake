@@ -2,16 +2,17 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
+	"github.com/google/logger"
 	"log"
 	"math/rand"
 	"os"
 	"time"
 )
 
+const logFile = "log.txt"
+
 var (
-	// Used if log flag provided
-	logFile string
+	verbose = flag.Bool("verbose", false, "print info level logs to stdout")
 
 	// Keep track of previous game values
 	lastGameState  int = Play
@@ -21,28 +22,22 @@ var (
 )
 
 func main() {
-
-	var logfile string
-
-	// Check if log flag provided
-	flag.StringVar(&logfile, "log", logfile, "Log file for debugging log")
 	flag.Parse()
 
 	// Set rand seed
 	rand.Seed(time.Now().UnixNano())
 
 	// Set logging
-	if logfile != "" {
-		f, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_WRONLY, 0666)
-		if err != nil {
-			//if f, e := os.Create(logfile); e == nil {
-			log.Fatalf("Error opening log file")
-			//}
-		}
-		defer f.Close()
-	} else {
-		log.SetOutput(ioutil.Discard)
+	lf, err := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_WRONLY, 0660)
+	if err != nil {
+		//if f, e := os.Create(logfile); e == nil {
+		logger.Fatalf("Error opening log file: %v", err)
+		//}
 	}
+	defer lf.Close()
+
+	defer logger.Init("Error log", *verbose, true, lf).Close()
+	logger.SetFlags(log.LstdFlags)
 
 	// Game loop
 	for {
