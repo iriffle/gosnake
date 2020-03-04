@@ -1,14 +1,11 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"github.com/google/logger"
-	"log"
 	"os"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/google/logger"
 
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/encoding"
@@ -77,10 +74,12 @@ type Game struct {
 	style    *Style    // The game's current color styles
 
 	// Score and profile tracking
-	scores   [][]string // 1 player scores
-	scores2  [][]string // 2 player scores
-	profiles [][]string
-	files    []string
+	scores1     []*Score // 1 player scores
+	scores2     []*Score
+	scoreFile   string
+	profiles    []*Profile
+	curProfiles []*Profile
+	proFile     string
 
 	// Misc variables
 	state      int       // Game state
@@ -90,6 +89,11 @@ type Game struct {
 	fps        int       // Game FPS
 	frames     int       // Used to track game FPS
 	bitQuit    chan bool // Used to close handlebits goroutine
+}
+
+type Data interface {
+	Encode() []byte
+	Decode()
 }
 
 // InitScreen initializes the tcell screen and sets views/bars and styles.
@@ -136,15 +140,14 @@ func (g *Game) MainMenu() {
 	cMenu := MenuMain
 
 	// Read high scores from scoreFile
-	g.scores = readData("1.dat")
-	logger.Infof("Loaded current high scores: %v", g.scores)
+	g.getScores()
 
 	// Run main menu until play or quit
 	for g.state != Play {
 
 		// Display the "Main Menu" menu
 		if cMenu == MenuMain {
-			logger.Info("Main menu page...")
+			g.screen.Clear()
 			i := g.handleMenu(mainOptions)
 			switch i {
 			case -1:
@@ -163,22 +166,92 @@ func (g *Game) MainMenu() {
 		// Display the Player number choice menu to decide
 		// how many players will be playing
 		if cMenu == MenuPlayer {
+			g.screen.Clear()
 			i := g.handleMenu(playerOptions)
 			switch i {
 			case -1:
-				cMenu = 0
+				cMenu = MenuMain
 			case 0:
 				g.numPlayers = 1
+				g.mode = Player1
 				cMenu = MenuProfile
 			case 1:
 				g.numPlayers = 2
+				g.mode = Player2
 				cMenu = MenuProfile
+			}
+		}
+
+		// Display the player profile menu and let players pick their
+		// profile or create a new one.
+		for cMenu == MenuProfile {
+			g.screen.Clear()
+			g.curProfiles = nil
+
+			for a := 0; a < g.numPlayers; a++ {
+				var profileList []string
+				var pNum string
+
+				// Read profiles from file and add to list to create menu items
+				byteData := ReadFile(g.proFile)
+				g.profiles = DecodeProfiles(byteData)
+				for i := range g.profiles {
+					profileList = append(profileList, g.profiles[i].Name)
+				}
+
+				// Add an entry for creating a new profile
+				profileList = append(profileList, "New Profile")
+
+				// If 1 Player mode don't show a number, if 2 player then
+				// show which player number during profile select
+				if g.numPlayers > 1 {
+					pNum = strconv.Itoa(a + 1)
+				} else {
+					pNum = ""
+				}
+				// Draw the Select Profile text
+				renderCenterStr(g.gview, MapWidth, MapHeight-4, g.style.DefStyle, ("  Select Profile " + pNum + ":"))
+				g.screen.Show()
+
+				// Draw and handle the player select menu. The list of menu items
+				// is generated using the list of profiles read from file.
+				i := g.handleMenu(profileList)
+
+				// Drop back to MenuMain if Escape is pressed
+				if i == -1 {
+					cMenu = MenuMain
+					break
+					// If any of the profiles are selected then add them to the current profile list
+					// and either proceed to to InitGame or continue loop for second player
+				} else if i < (len(profileList) - 1) {
+					g.curProfiles = append(g.curProfiles, g.profiles[i])
+					g.state = Play
+					cMenu = MenuMain
+					continue
+					// If "New Profile" is selected then run getPlayerName to get a name and
+					// create a profile from that name
+				} else {
+					name := ""
+					for name == "" {
+						name = g.getPlayerName(MapWidth, MapHeight)
+						if name != "-quit-" {
+							p := NewProfile(name, "green")
+							g.profiles = append(g.profiles, p)
+							WriteProfiles(g.profiles, g.proFile)
+						}
+						break
+					}
+					if name == "-quit-" {
+						break
+					}
+				}
 			}
 		}
 
 		// Display the high score screen
 		for cMenu == MenuScore {
-			renderHighScoreScreen(g, g.style.DefStyle)
+			g.screen.Clear()
+			renderHighScoreScreen(g, g.style.DefStyle, MaxHighScores)
 
 			// Wait for Escape key to be pressed to return to Main Menu
 			ev := g.screen.PollEvent()
@@ -226,18 +299,10 @@ func (g *Game) InitGame() {
 
 	// Create a player for selected number of players
 	for i := 0; i < g.numPlayers; i++ {
-		pName := ""
+
 		y := (MapHeight / 2) + (i * 2)
-
-		for pName == "" {
-			pName = g.getPlayerName(i+1, m.Width, m.Height)
-		}
-		if pName == "-quit-" {
-			g.QuitToMenu()
-			return
-		}
-
-		pStyle := g.style.PlayerColors[i]
+		pName := g.curProfiles[i].Name
+		pStyle := g.curProfiles[i].GetStyle()
 		p := NewPlayer(x, y, 0, (DirLeft - i), PlayerRune, pName, pStyle)
 		g.players = append(g.players, p)
 	}
@@ -356,12 +421,12 @@ func (g *Game) handlePause() {
 // handlePlayer is the player loop and handles a player's
 // state and  interaction with objects and the game map.
 func (g *Game) handlePlayer(p *Player) {
-	var scoreChange bool
 
 	// Continuously loop unless killed through p.ch channel
 	for {
 		select {
 		default:
+			scoreChange := false
 
 			// Check which direction player should be moving
 			dx, dy := p.CheckDirection(g)
@@ -380,27 +445,29 @@ func (g *Game) handlePlayer(p *Player) {
 
 					// Read high scores from file, compare against current scores
 					// and make changes if necessary
-					g.scores2 = readData(g.files[1])
-					g.scores2, scoreChange = g.checkScores()
+					g.getScores()
+					g.scores2, scoreChange = UpdateScores(g.scores2, p.name, p.score, g.mode, MaxHighScores)
 					if scoreChange {
-						writeData(g.files[1], g.scores2)
+						WriteScores(g.scores1, g.scores2, g.scoreFile)
 					}
 
 					// Reset the player
 					p.Reset(MapWidth/2, MapHeight/2, 3, g.style.BiteExplodedStyle)
+					logger.Infof("Player died: %v", p.name)
 
 					// Run if in 1 player mode
 				} else {
 
 					// Kill player
 					p.Kill(g.style.BiteExplodedStyle)
+					logger.Infof("Player died: %v", p.name)
 
 					// Read high scores from file, compare against current scores
 					// and make changes if necessary
-					g.scores = readData(g.files[0])
-					g.scores, scoreChange = g.checkScores()
+					g.getScores()
+					g.scores1, scoreChange = UpdateScores(g.scores1, p.name, p.score, g.mode, MaxHighScores)
 					if scoreChange {
-						writeData(g.files[0], g.scores)
+						WriteScores(g.scores1, g.scores2, g.scoreFile)
 					}
 
 					// Wait a short period of time then restart the game
@@ -494,132 +561,8 @@ func (g *Game) handleLevel(m *GameMap) {
 	}
 }
 
-// checkScores compares a player's score against the high score list
-// to see if a new high score has been reached.
-func (g *Game) checkScores() ([][]string, bool) {
-
-	var (
-		scores     [][]string
-		newScores  [][]string
-		numPlayers string
-	)
-
-	scoreChange := false
-
-	// Determine which score slice to use based on number of players
-	if g.numPlayers == 1 {
-		scores = g.scores
-
-		// numPlayers is used over g.numPlayers later when appending
-		// to newScore slice as a bug seems to pop up occassionally if
-		// strconv.Itoa is used more than once being passed to append.
-		numPlayers = "1"
-	} else {
-		scores = g.scores2
-		numPlayers = "2"
-	}
-
-	// If there are previous high scores then compare them to
-	// player's current score
-	if scores != nil {
-
-		// Run for both players if more than one exists
-		for _, p := range g.players {
-
-			// Run through all scores in the list
-			for i, s := range scores {
-
-				// Score is saved as a string so it must be converted to
-				// integer to compare
-				scoreStr, err := strconv.Atoi(s[2])
-				if err != nil {
-					logger.Errorf("Error converting string to int: %v", err)
-				}
-				pScoreStr := strconv.Itoa(p.score)
-
-				// Check if player's score is higher than current score from list
-				if p.score > scoreStr {
-					logger.Infof("Score change: %v > %v", pScoreStr, s)
-					var newScore []string
-					scoreChange = true
-
-					// Create a formatted score of "number of players:player name:score"
-					newScore = append(newScore, numPlayers, p.name, pScoreStr)
-
-					// Append the previous high scores to the new high score list up until
-					// where the newest high score should be inserted
-					for a := 0; a < i; a++ {
-						newScores = append(newScores, scores[a])
-					}
-
-					// Append the newest high score into the new high score list
-					newScores = append(newScores, newScore)
-
-					// Continue appending the rest of the previous high scores after the
-					// newest high score until there are no scores left
-					if i <= len(g.scores)-1 {
-						for a := i; a < len(g.scores); a++ {
-							newScores = append(newScores, scores[a])
-						}
-					}
-					logger.Infof("newScores: %v", newScores)
-					break
-
-					// If the player's score is less than any of the previous high scores
-					// but the number of previous high scores is less than the maximum
-					// number of high scores saved, then add the score to the end of the list.
-				} else if len(scores) < MaxHighScores && p.score > 0 {
-					logger.Infof("Score added because MaxHighScores not reached: %v", pScoreStr)
-					var newScore []string
-					scoreChange = true
-					newScore = append(newScore, numPlayers, p.name, pScoreStr)
-					newScores = append(scores, newScore)
-					break
-				}
-			}
-		}
-
-		// Check for changes in high score list
-		if scoreChange {
-			logger.Infof("High scores original: %v", scores)
-
-			// Reset scores list
-			scores = nil
-
-			// If the number of high scores saved is longer than the maximum, then only
-			// add scores up to the maximum back to the scores list
-			if len(newScores) > MaxHighScores {
-				for i := 0; i < MaxHighScores; i++ {
-					scores = append(scores, newScores[i])
-				}
-
-				// If its not higher then add all of them
-			} else {
-				for i := 0; i < len(newScores); i++ {
-					scores = append(scores, newScores[i])
-				}
-			}
-			logger.Infof("High scores changed: %v", scores)
-		}
-
-		// If no previous high scores present then add all player scores
-		// to high score list
-	} else {
-		for _, p := range g.players {
-			if p.score > 0 {
-				var newScore []string
-				scoreChange = true
-				newScore = append(newScore, strconv.Itoa(g.numPlayers), p.name, strconv.Itoa(p.score))
-				scores = append(scores, newScore)
-			}
-		}
-		logger.Infof("Adding alls scores due to no previous scores present: %v", scores)
-	}
-	return scores, scoreChange
-}
-
 // getPlayerName allows a player to input their name.
-func (g *Game) getPlayerName(playerNum, w, h int) string {
+func (g *Game) getPlayerName(w, h int) string {
 	var (
 		char       rune
 		chars      []rune
@@ -629,9 +572,8 @@ func (g *Game) getPlayerName(playerNum, w, h int) string {
 
 	for {
 		newChars = nil
-
 		// Render the player select screen
-		renderNameSelect(g, w, h, playerNum, charString)
+		renderNameSelect(g, w, h, charString)
 
 		// Get input
 		char = handleStringInput(g)
@@ -687,65 +629,10 @@ func (g *Game) removeBit(i int) {
 	g.bits = g.bits[:len(g.bits)-1]
 }
 
-// readData reads game data from a data file and adds the values to a nested slice.
-func readData(file string) [][]string {
-	var data [][]string
-
-	// Check if high score file exists. If not then create it
-	_, err := os.Stat(file)
-	if os.IsNotExist(err) {
-		_, err := os.Create(file)
-		if err != nil {
-			logger.Errorf("Error creating file: %v", err)
-		}
-	}
-
-	// Open the data file
-	f, err := os.Open(file)
-	if err != nil {
-		logger.Errorf("Error opening file: %v", err)
-	}
-
-	// Close the data file on exit
-	defer func() {
-		if err = f.Close(); err != nil {
-			logger.Errorf("Error closing file: %v", err)
-		}
-	}()
-
-	// Read data file one line at a time
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		row := strings.Split(s.Text(), ":")
-		data = append(data, row)
-	}
-	err = s.Err()
-	if err != nil {
-		log.Println(err)
-	}
-	return data
-}
-
-// writeData takes data from a nested slice and writes it to a data file.
-func writeData(file string, data [][]string) {
-	// Open data file overwriting any previous data
-	f, err := os.OpenFile(file, os.O_CREATE, 0660)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	// Close the file on exit
-	defer func() {
-		if err = f.Close(); err != nil {
-			fmt.Println(err)
-		}
-	}()
-
-	// Write the data
-	for _, v := range data {
-		_, err := fmt.Fprintln(f, strings.Join(v[:], ":"))
-		if err != nil {
-			logger.Errorf("Error writing data: %v", err)
-		}
-	}
+// getScores reads scores from the game's scoreFile and stores them in it's
+// scores1 and scores2 variables.
+func (g *Game) getScores() {
+	byteData := ReadFile(g.scoreFile)
+	g.scores1, g.scores2 = DecodeScores(byteData)
+	logger.Infof("Loaded high scores from file: %v", g.scoreFile)
 }

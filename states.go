@@ -30,8 +30,8 @@ const (
 
 const (
 	// Game modes
-	Basic = iota
-	Advanced
+	Player1 = iota
+	Player2
 	Battle
 )
 

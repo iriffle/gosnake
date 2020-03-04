@@ -11,9 +11,14 @@ import (
 
 // Render all of the game in main game loop
 func renderAll(g *Game, style tcell.Style, m *GameMap) {
+
+	// Clear screen for redraw
 	g.gview.Clear()
+
+	// Draw game map
 	renderMap(g.gview, m)
 
+	// Draw the Bite explosion map
 	renderMap(g.gview, g.biteMap)
 
 	if g.numPlayers == 1 {
@@ -40,7 +45,6 @@ func renderMap(v *views.ViewPort, m *GameMap) {
 
 // Render a menu
 func renderMenu(g *Game, m *Menu, style tcell.Style) {
-	g.screen.Clear()
 	for _, item := range m.items {
 		renderStr(g.gview, item.x, item.y, item.style, item.str)
 	}
@@ -48,32 +52,38 @@ func renderMenu(g *Game, m *Menu, style tcell.Style) {
 }
 
 // Render the name selection screen
-func renderNameSelect(g *Game, w, h, playerNum int, charString string) {
+func renderNameSelect(g *Game, w, h int, charString string) {
 	g.gview.Clear()
-	renderCenterStr(g.gview, w, h, g.style.DefStyle, "Name of Player "+strconv.Itoa(playerNum)+":")
+	renderCenterStr(g.gview, w, h, g.style.DefStyle, "Name of Player:")
 	renderCenterStr(g.gview, w, h+2, g.style.SelStyle, charString+"|")
 	g.screen.Show()
 }
 
 // Render the High Score screen
-func renderHighScoreScreen(g *Game, style tcell.Style) {
+func renderHighScoreScreen(g *Game, style tcell.Style, max int) {
 	g.gview.Clear()
 	g.gview.Fill(' ', style)
 	renderCenterStr(g.gview, MapWidth, 4, style, "High Scores")
 	renderCenterStr(g.gview, MapWidth, 6, style, strings.Repeat("=", MapWidth-10))
 	renderCenterStr(g.gview, MapWidth, 10, style, "1 Player:")
-	renderHighScores(g, g.scores, style, 14)
-	renderCenterStr(g.gview, MapWidth, 16+MaxHighScores*2, style, "2 Player:")
-	renderHighScores(g, g.scores2, style, 20+MaxHighScores*2)
+	renderHighScores(g, style, Player1, 14)
+	renderCenterStr(g.gview, MapWidth, (16 + max*2), style, "2 Player:")
+	renderHighScores(g, style, Player2, (20 + max*2))
 
 	g.screen.Show()
 }
 
 // Render a list of scores for the high score screen
-func renderHighScores(g *Game, scores [][]string, style tcell.Style, lastScorePos int) {
-	for i := 0; i < MaxHighScores; i++ {
+func renderHighScores(g *Game, style tcell.Style, mode, lastScorePos int) {
+	var scores []*Score
+	if mode == Player1 {
+		scores = g.scores1
+	} else if mode == Player2 {
+		scores = g.scores2
+	}
+	for i, score := range scores {
 		if i < len(scores) {
-			renderCenterStr(g.gview, MapWidth, lastScorePos+i, style, (scores[i][1] + " - " + scores[i][2]))
+			renderCenterStr(g.gview, MapWidth, lastScorePos+i, style, (score.Name + " - " + strconv.Itoa(score.Score)))
 		} else {
 			renderCenterStr(g.gview, MapWidth, lastScorePos+i, style, "----")
 		}

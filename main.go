@@ -9,7 +9,11 @@ import (
 	"time"
 )
 
-const logFile = "log.txt"
+const (
+	logFile   = "log.txt"
+	proFile   = "profiles.json"
+	scoreFile = "hs.json"
+)
 
 var (
 	verbose = flag.Bool("verbose", false, "print info level logs to stdout")
@@ -17,8 +21,7 @@ var (
 	// Keep track of previous game values
 	lastGameState  int = Play
 	lastNumPlayers int
-
-	files = []string{"1.dat", "2.dat", "profiles.dat"}
+	curProfiles    []*Profile
 )
 
 func main() {
@@ -42,7 +45,7 @@ func main() {
 	// Game loop
 	for {
 		// Create game
-		g := &Game{numPlayers: lastNumPlayers, files: files}
+		g := &Game{numPlayers: lastNumPlayers, curProfiles: curProfiles, scoreFile: scoreFile, proFile: proFile}
 
 		// Initialize screen
 		g.InitScreen()
@@ -67,5 +70,6 @@ func main() {
 		// Save game values
 		lastGameState = g.state
 		lastNumPlayers = g.numPlayers
+		curProfiles = g.curProfiles
 	}
 }
