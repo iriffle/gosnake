@@ -8,11 +8,13 @@ import (
 
 // The game map struct
 type GameMap struct {
-	Width   int
-	Height  int
-	X       int
-	Y       int
-	Objects [][]*Object
+	Width    int
+	Height   int
+	X        int
+	Y        int
+	Objects  [][]*Object
+	BitChan  chan bool
+	WallChan []chan bool
 }
 
 // Generate an empty map
@@ -39,7 +41,8 @@ func (m *GameMap) InitMapBoundary(wallRune, floorRune rune, style tcell.Style) {
 
 // Generate level 1 map which is just an open map with walls around perimeter
 func (m *GameMap) InitLevel1(g *Game) {
-	go m.RandomBits(g, 2, 10, 3*time.Second)
+	m.BitChan = make(chan bool)
+	go m.RandomBits(g, 2, 10, 3*time.Second, m.BitChan)
 	go m.RandomLines(g, 2)
 }
 
@@ -53,17 +56,26 @@ func (m *GameMap) InitLevel3(g *Game) {
 }
 
 func (m *GameMap) InitLevel4(g *Game) {
-	go m.MovingWall(g, 1+15, m.Height/4, DirLeft, 2, 15, WallRune, g.style.DefStyle)
-	go m.MovingWall(g, m.Width-15, (m.Height - m.Height/4), DirRight, 2, 15, WallRune, g.style.DefStyle)
+	m.MakeWallChan(2)
+	go m.MovingWall(g, 1+15, m.Height/4, DirLeft, 2, 15, WallRune, g.style.DefStyle, m.WallChan[0])
+	go m.MovingWall(g, m.Width-15, (m.Height - m.Height/4), DirRight, 2, 15, WallRune, g.style.DefStyle, m.WallChan[1])
 }
 
 func (m *GameMap) InitLevel5(g *Game) {
-	// go m.MovingWall(g, m.Width/4, 6, DirUp, 1, 5, WallRune, g.style.DefStyle)
-	// go m.MovingWall(g, (m.Width/4 + 1), 6, DirUp, 1, 5, WallRune, g.style.DefStyle)
-	// go m.MovingWall(g, (m.Width/4 + 2), 6, DirUp, 1, 5, WallRune, g.style.DefStyle)
-	// go m.MovingWall(g, (m.Width - m.Width/4), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle)
-	// go m.MovingWall(g, ((m.Width - m.Width/4) - 1), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle)
-	// go m.MovingWall(g, ((m.Width - m.Width/4) - 2), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle)
+	m.MakeWallChan(6)
+	go m.MovingWall(g, m.Width/4, 6, DirUp, 1, 5, WallRune, g.style.DefStyle, m.WallChan[2])
+	go m.MovingWall(g, (m.Width/4 + 1), 6, DirUp, 1, 5, WallRune, g.style.DefStyle, m.WallChan[3])
+	go m.MovingWall(g, (m.Width/4 + 2), 6, DirUp, 1, 5, WallRune, g.style.DefStyle, m.WallChan[4])
+	go m.MovingWall(g, (m.Width - m.Width/4), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle, m.WallChan[5])
+	go m.MovingWall(g, ((m.Width - m.Width/4) - 1), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle, m.WallChan[6])
+	go m.MovingWall(g, ((m.Width - m.Width/4) - 2), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle, m.WallChan[7])
+}
+
+func (m *GameMap) InitLevel6(g *Game) {
+	for i := range m.WallChan {
+		m.WallChan[i] <- true
+	}
+	m.BitChan <- true
 }
 
 func (m *GameMap) RandomLines(g *Game, numTimes int) {
@@ -74,15 +86,20 @@ func (m *GameMap) RandomLines(g *Game, numTimes int) {
 	}
 }
 
-func (m *GameMap) RandomBits(g *Game, bitsGen, bitsMax int, dur time.Duration) {
+func (m *GameMap) RandomBits(g *Game, bitsGen, bitsMax int, dur time.Duration, quit chan bool) {
 	for {
-		for i := 0; i < bitsGen; i++ {
-			if len(g.bits)-bitsGen < bitsMax {
-				newB := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
-				g.bits = append(g.bits, newB)
+		select {
+		default:
+			for i := 0; i < bitsGen; i++ {
+				if len(g.bits)-bitsGen < bitsMax {
+					newB := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
+					g.bits = append(g.bits, newB)
+				}
 			}
+			time.Sleep(dur)
+		case <-quit:
+			return
 		}
-		time.Sleep(dur)
 
 	}
 }
@@ -99,33 +116,45 @@ func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration
 	}
 }
 
-func (m *GameMap) MovingWall(g *Game, x, y, direction, speed, segments int, char rune, style tcell.Style) {
+func (m *GameMap) MovingWall(g *Game, x, y, direction, speed, segments int, char rune, style tcell.Style, quit chan bool) {
 	e := NewEntity(x, y, direction, speed, char, style)
 	for i := 0; i < segments; i++ {
 		e.AddSegment(char, style)
 	}
 	g.entities = append(g.entities, e)
 	for {
-		dx, dy := e.CheckDirection(g)
-		if e.IsBlockedByMap(m, dx, dy) {
-			var newPos []*Object
-			for i, _ := range e.pos {
-				newPos = append(newPos, e.pos[len(e.pos)-1-i])
+		select {
+		default:
+			dx, dy := e.CheckDirection(g)
+			if e.IsBlockedByMap(m, dx, dy) {
+				var newPos []*Object
+				for i, _ := range e.pos {
+					newPos = append(newPos, e.pos[len(e.pos)-1-i])
+				}
+				e.pos = newPos
+				switch e.direction {
+				case DirUp:
+					e.direction = DirDown
+				case DirDown:
+					e.direction = DirUp
+				case DirLeft:
+					e.direction = DirRight
+				case DirRight:
+					e.direction = DirLeft
+				}
+			} else {
+				e.Move(dx, dy)
 			}
-			e.pos = newPos
-			switch e.direction {
-			case DirUp:
-				e.direction = DirDown
-			case DirDown:
-				e.direction = DirUp
-			case DirLeft:
-				e.direction = DirRight
-			case DirRight:
-				e.direction = DirLeft
-			}
-		} else {
-			e.Move(dx, dy)
+			time.Sleep(g.moveInterval(e.speed, e.direction))
+		case <-quit:
+			return
 		}
-		time.Sleep(g.moveInterval(e.speed, e.direction))
+	}
+}
+
+func (m *GameMap) MakeWallChan(num int) {
+	for i := 0; i < num; i++ {
+		c := make(chan bool)
+		m.WallChan = append(m.WallChan, c)
 	}
 }

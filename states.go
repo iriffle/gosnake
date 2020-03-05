@@ -37,8 +37,9 @@ const (
 
 const (
 	// Levels
-	Level2 = 200
-	Level3 = 400
-	Level4 = 600
-	Level5 = 800
+	Level2 = 20
+	Level3 = 40
+	Level4 = 60
+	Level5 = 80
+	Level6 = 100
 )

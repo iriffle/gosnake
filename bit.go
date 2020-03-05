@@ -174,15 +174,6 @@ func (b *Bite) ExplodeBite(g *Game, m, biteMap *GameMap) {
 	b.ExplodeDir(biteMap, m, BiteExplodeRune, g.style.BiteExplodedStyle, true, (30 * time.Millisecond))
 	time.Sleep(10 * time.Second)
 	b.ExplodeDir(biteMap, m, ' ', g.style.DefStyle, false, 0)
-
-	for i, _ := range g.bites {
-		if b.x == g.bites[i].x && b.y == g.bites[i].y {
-			g.bites[i] = g.bites[len(g.bites)-1]
-			g.bites[len(g.bites)-1] = nil
-			g.bites = g.bites[:len(g.bites)-1]
-			return
-		}
-	}
 }
 
 func (b *Bite) ExplodeDir(biteMap, m *GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {

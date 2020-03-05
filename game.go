@@ -320,7 +320,9 @@ func (g *Game) RunGame() {
 	// Run a goroutine for each player to handle their own loop
 	// separately from each other and the main game loop
 	for _, p := range g.players {
-		p.ch = make(chan bool)
+		p.quitChan = make(chan bool)
+		p.bitChan = make(chan int, 1)
+		p.biteChan = make(chan int, 1)
 		go g.handlePlayer(p)
 	}
 
@@ -336,6 +338,17 @@ func (g *Game) RunGame() {
 		// Handle game if pause button is pressed
 		g.handlePause()
 
+		for i := range g.players {
+			select {
+			case bitPos := <-g.players[i].bitChan:
+				g.removeBit(bitPos)
+			case bitePos := <-g.players[i].biteChan:
+				g.removeBite(bitePos)
+			default:
+				continue
+			}
+		}
+
 		// Render the game
 		renderAll(g, g.style.DefStyle, m)
 
@@ -346,7 +359,7 @@ func (g *Game) RunGame() {
 
 	// If game ends then kill the handlePlayer goroutines
 	for _, p := range g.players {
-		p.ch <- true
+		p.quitChan <- true
 	}
 }
 
@@ -397,7 +410,7 @@ func (g *Game) handlePause() {
 	for g.state == Pause {
 		if !chQuit {
 			for _, p := range g.players {
-				p.ch <- true
+				p.quitChan <- true
 				chQuit = true
 			}
 		}
@@ -480,8 +493,14 @@ func (g *Game) handlePlayer(p *Player) {
 				p.Move(dx, dy)
 			}
 			// Check if player is on a bit or bite
-			p.IsOnBit(g)
-			p.IsOnBite(g, m)
+			bitPos := p.IsOnBit(g)
+			if bitPos != -1 {
+				p.bitChan <- bitPos
+			}
+			bitePos := p.IsOnBite(g, m)
+			if bitePos != -1 {
+				p.biteChan <- bitePos
+			}
 
 			// Calculate player's speed based on their score.
 			// Movement is done by causing the player goroutine
@@ -490,7 +509,7 @@ func (g *Game) handlePlayer(p *Player) {
 			time.Sleep(g.moveInterval(0, p.GetDirection()))
 
 		// Quit goroutine if signaled
-		case <-p.ch:
+		case <-p.quitChan:
 			return
 		}
 	}
@@ -553,9 +572,17 @@ func (g *Game) handleLevel(m *GameMap) {
 		// Level 5
 		if p.score >= Level5 {
 			if g.level < 5 {
-				//m.InitLevel5(g)
+				m.InitLevel5(g)
 				g.level = 5
 				logger.Info(p.name + " reached level 5!")
+			}
+		}
+		// Level 6
+		if p.score >= Level6 {
+			if g.level < 6 {
+				m.InitLevel6(g)
+				g.level = 6
+				logger.Info(p.name + " reached level 6!")
 			}
 		}
 	}
@@ -627,6 +654,14 @@ func (g *Game) removeBit(i int) {
 	g.bits[i] = g.bits[len(g.bits)-1]
 	g.bits[len(g.bits)-1] = nil
 	g.bits = g.bits[:len(g.bits)-1]
+}
+
+// removeBit removes a particular bit from the game's bit slice in order to remove
+// that bit from the game.
+func (g *Game) removeBite(i int) {
+	g.bites[i] = g.bites[len(g.bites)-1]
+	g.bites[len(g.bites)-1] = nil
+	g.bites = g.bites[:len(g.bites)-1]
 }
 
 // getScores reads scores from the game's scoreFile and stores them in it's

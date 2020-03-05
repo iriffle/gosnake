@@ -9,10 +9,12 @@ import (
 // The player struct
 type Player struct {
 	*Entity
-	name  string
-	score int
-	count int
-	ch    chan bool
+	name     string
+	score    int
+	count    int
+	quitChan chan bool
+	bitChan  chan int
+	biteChan chan int
 }
 
 // Make a new player
@@ -43,51 +45,51 @@ func (p *Player) Kill(biteExplodedStyle tcell.Style) {
 }
 
 // Check if player is on top of a bit
-func (p *Player) IsOnBit(g *Game) {
-	onBit, i := p.CheckBitPos(g.bits)
-	if onBit {
+func (p *Player) IsOnBit(g *Game) int {
+	i := p.CheckBitPos(g.bits)
+	if i != -1 {
 		b := g.bits[i]
 		p.score += b.points
 		p.AddSegment(p.pos[0].char, p.pos[0].style)
-		g.removeBit(i)
 	}
+	return i
 }
 
 // Check the position of bits in relation to the player
 // and see if there is a match
-func (p *Player) CheckBitPos(bits []*Bit) (bool, int) {
-	i := 0
+func (p *Player) CheckBitPos(bits []*Bit) int {
 	for i, _ := range bits {
 		if p.pos[0].x == bits[i].x && p.pos[0].y == bits[i].y {
-			return true, i
+			return i
 		}
 	}
-	return false, i
+	return -1
 }
 
 // Check the position of bites in relation to the player
 // and see if there is a match
-func (p *Player) CheckBitePos(bites []*Bite) (bool, int) {
-	i := 0
+func (p *Player) CheckBitePos(bites []*Bite) int {
 	for i, bite := range bites {
 		if p.pos[0].x == bite.x && p.pos[0].y == bite.y {
-			return true, i
+			return i
 		}
 	}
-	return false, i
+	return -1
 }
 
 // Determine if player is on a bite and if so trigger explosion
-func (p *Player) IsOnBite(g *Game, m *GameMap) {
-	onBite, i := p.CheckBitePos(g.bites)
-	if onBite {
+func (p *Player) IsOnBite(g *Game, m *GameMap) int {
+	i := p.CheckBitePos(g.bites)
+	if i != -1 {
 		b := g.bites[i]
 		p.score += 50
 		for i := 0; i < 4; i++ {
 			p.AddSegment(p.pos[0].char, p.pos[0].style)
 		}
 		go b.ExplodeBite(g, m, g.biteMap)
+		return i
 	}
+	return -1
 }
 
 // Check if player is blocked
