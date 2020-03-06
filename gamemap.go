@@ -134,7 +134,7 @@ func (m *GameMap) MovingWall(g *Game, x, y, direction, speed, segments int, char
 			dx, dy := e.CheckDirection(g)
 			if e.IsBlockedByMap(m, dx, dy) {
 				var newPos []*Object
-				for i, _ := range e.pos {
+				for i := range e.pos {
 					newPos = append(newPos, e.pos[len(e.pos)-1-i])
 				}
 				e.pos = newPos

@@ -21,7 +21,7 @@ type Menu struct {
 }
 
 // Create new MenuItem
-func NewMenuItem(w, h int, str string, style tcell.Style) MenuItem {
+func NewMenuItem(w, h int, str string, style tcell.Style) *MenuItem {
 	l := len(str)
 	x := (w / 2) - (l / 2)
 	y := h / 2
@@ -33,26 +33,26 @@ func NewMenuItem(w, h int, str string, style tcell.Style) MenuItem {
 		style,
 		false,
 	}
-	return i
+	return &i
 }
 
 // Create NewMenu with slice of MenuItems
-func NewMenu(items []*MenuItem, defStyle, selStyle tcell.Style, level int) Menu {
+func NewMenu(items []*MenuItem, defStyle, selStyle tcell.Style, level int) *Menu {
 	m := Menu{
 		items,
 		defStyle,
 		selStyle,
 		level,
 	}
-	return m
+	return &m
 }
 
 // Create player menu screen
-func NewMainMenu(menuOptions []string, defStyle, selStyle tcell.Style, level int) Menu {
+func NewMainMenu(menuOptions []string, defStyle, selStyle tcell.Style, level int) *Menu {
 	var items []*MenuItem
 	for _, option := range menuOptions {
 		p := NewMenuItem(MapWidth, MapHeight, option, defStyle)
-		items = append(items, &p)
+		items = append(items, p)
 	}
 	m := NewMenu(items, defStyle, selStyle, level)
 	m.AdjustItemPos()

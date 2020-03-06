@@ -54,7 +54,7 @@ func NewBitLineH(g *Game, x, y, points, numBits int, char rune, style tcell.Styl
 // Create a vertical line of bits of a given length
 func NewBitLineV(g *Game, x, y, points, numBits int, char rune, style tcell.Style) {
 	for i := 0; i < numBits; i++ {
-		y += 1
+		y++
 		b := NewBit(x, y, points, char, 0, style)
 		g.bits = append(g.bits, b)
 	}

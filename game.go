@@ -254,31 +254,8 @@ func (g *Game) MenuProfile(cMenu int) int {
 				// If "New Profile" is selected then run getPlayerName to get a name and
 				// create a profile from that name
 			} else {
-				name := ""
-				for name == "" {
-					name = g.getPlayerName(MapWidth, MapHeight)
-					if name != "-quit-" {
-						var charList []string
-						g.screen.Clear()
-						for i := range PlayerRunes {
-							char, err := strconv.Unquote(strconv.QuoteRune(PlayerRunes[i]))
-							if err != nil {
-								logger.Errorf("Error removing quotes: %v", err)
-							}
-							charList = append(charList, char)
-						}
-						i := g.handleMenu(charList)
-						if i == -1 {
-							return MenuMain
-						} else {
-							p := NewProfile(name, "green", PlayerRunes[i])
-							g.profiles = append(g.profiles, p)
-							WriteProfiles(g.profiles, g.proFile)
-						}
-					}
-					break
-				}
-				if name == "-quit-" {
+				i := g.createProfile()
+				if i == MenuMain {
 					break
 				}
 			}
@@ -437,13 +414,49 @@ func (g *Game) handleMenu(options []string) int {
 	m.SetSelected(0)
 	m.ChangeSelected()
 	for choice == 0 {
-		renderMenu(g, &m, g.style.DefStyle)
-		choice = handleMenuInput(g, &m)
+		renderMenu(g, m, g.style.DefStyle)
+		choice = handleMenuInput(g, m)
 	}
 	if choice == 1 {
 		choice = m.GetSelected()
 	}
 	return choice
+}
+
+func (g *Game) handleProfile(options []string) int {
+	choice := 0
+	m := NewMainMenu(options, g.style.DefStyle, g.style.SelStyle, 0)
+	m.SetSelected(0)
+	m.ChangeSelected()
+	for choice == 0 {
+		renderProfile(g, m, MapWidth, MapHeight, g.style.DefStyle)
+		choice = handleMenuInput(g, m)
+	}
+	if choice == 1 {
+		choice = m.GetSelected()
+	}
+	return choice
+}
+
+func (g *Game) createProfile() int {
+	name := ""
+	for name == "" {
+		name = g.getPlayerName(MapWidth, MapHeight)
+		if name != "-quit-" {
+			g.screen.Clear()
+			charList := getCharList(PlayerRunes)
+			i := g.handleProfile(charList)
+			if i == -1 {
+				return MenuMain
+			}
+			p := NewProfile(name, "green", PlayerRunes[i])
+			g.profiles = append(g.profiles, p)
+			WriteProfiles(g.profiles, g.proFile)
+			return MenuProfile
+		}
+		return MenuMain
+	}
+	return MenuMain
 }
 
 // handlePlayer is the player loop and handles a player's
@@ -536,7 +549,7 @@ func (g *Game) handleBits(m *GameMap) {
 		select {
 		default:
 			// Move bits in a random direction after a set amount of time
-			for i, _ := range g.bits {
+			for i := range g.bits {
 				switch g.bits[i].state {
 				case BitRandom:
 					g.bits[i].Move(m)
@@ -726,4 +739,16 @@ func (g *Game) getScores() {
 	byteData := ReadFile(g.scoreFile)
 	g.scores1, g.scores2 = DecodeScores(byteData)
 	logger.Infof("Loaded high scores from file: %v", g.scoreFile)
+}
+
+func getCharList(list []rune) []string {
+	var charList []string
+	for i := range list {
+		char, err := strconv.Unquote(strconv.QuoteRune(PlayerRunes[i]))
+		if err != nil {
+			logger.Errorf("Error removing quotes: %v", err)
+		}
+		charList = append(charList, char)
+	}
+	return charList
 }

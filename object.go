@@ -36,7 +36,6 @@ func (o *Object) IsBlocked(x int, y int) bool {
 	// Check to see if the provided coordinates contain a blocked tile
 	if o.x == x && o.y == y && o.blocked {
 		return true
-	} else {
-		return false
 	}
+	return false
 }

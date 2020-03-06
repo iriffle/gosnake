@@ -32,10 +32,10 @@ const (
 type Style struct {
 	DefStyle          tcell.Style
 	SelStyle          tcell.Style
+	SelStyleBG        tcell.Style
 	BitStyle          tcell.Style
 	BiteStyle         tcell.Style
 	BiteExplodedStyle tcell.Style
-	PlayerColors      []tcell.Style
 }
 
 func SetDefaultStyle() *Style {
@@ -43,24 +43,23 @@ func SetDefaultStyle() *Style {
 	s := Style{
 		DefStyle:          GetStyle(DefBGStyle, DefFGStyle),
 		SelStyle:          GetStyle(DefBGStyle, SelFGStyle),
+		SelStyleBG:        GetStyle(Aqua, DefFGStyle),
 		BitStyle:          GetStyle(Black, White),
 		BiteStyle:         GetStyle(Black, Fuchsia),
 		BiteExplodedStyle: GetStyle(Black, Red),
-
-		PlayerColors: []tcell.Style{GetStyle(DefBGStyle, tcell.ColorGreen), GetStyle(DefBGStyle, tcell.ColorRed), GetStyle(DefBGStyle, tcell.ColorSilver), GetStyle(DefBGStyle, tcell.ColorAqua)},
 	}
 
 	return &s
 }
 
-func SetNewStyle(defStyle, selStyle, bitStyle, biteStyle, biteExplodedStyle tcell.Style, playerColors []tcell.Style) *Style {
+func SetNewStyle(defStyle, selStyle, selStyleBG, bitStyle, biteStyle, biteExplodedStyle tcell.Style, playerColors []tcell.Style) *Style {
 	s := Style{
 		DefStyle:          defStyle,
 		SelStyle:          selStyle,
+		SelStyleBG:        selStyleBG,
 		BitStyle:          bitStyle,
 		BiteStyle:         biteStyle,
 		BiteExplodedStyle: biteExplodedStyle,
-		PlayerColors:      playerColors,
 	}
 
 	return &s

@@ -76,7 +76,6 @@ func (e *Entity) AddSegment(char rune, style tcell.Style) {
 func (e *Entity) IsBlockedByMap(m *GameMap, dx, dy int) bool {
 	if m.Objects[e.pos[0].x+dx][e.pos[0].y+dy].blocked {
 		return true
-	} else {
-		return false
 	}
+	return false
 }

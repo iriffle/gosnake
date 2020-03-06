@@ -38,7 +38,7 @@ func (p *Player) Reset(x, y, direction int, biteExplodedStyle tcell.Style) {
 }
 
 func (p *Player) Kill(biteExplodedStyle tcell.Style) {
-	for i, _ := range p.pos {
+	for i := range p.pos {
 		p.pos[i].style = biteExplodedStyle
 		time.Sleep(20 * time.Millisecond)
 	}
@@ -58,7 +58,7 @@ func (p *Player) IsOnBit(g *Game) int {
 // Check the position of bits in relation to the player
 // and see if there is a match
 func (p *Player) CheckBitPos(bits []*Bit) int {
-	for i, _ := range bits {
+	for i := range bits {
 		if p.pos[0].x == bits[i].x && p.pos[0].y == bits[i].y {
 			return i
 		}

@@ -51,6 +51,11 @@ func renderMenu(g *Game, m *Menu, style tcell.Style) {
 	g.screen.Show()
 }
 
+func renderProfile(g *Game, m *Menu, w, h int, style tcell.Style) {
+	renderCenterChars(g.gview, m, w, h)
+	g.screen.Show()
+}
+
 // Render the name selection screen
 func renderNameSelect(g *Game, w, h int, charString string) {
 	g.gview.Clear()
@@ -175,6 +180,29 @@ func renderCenterStr(v *views.ViewPort, w, h int, style tcell.Style, str string)
 	x := (w / 2) - (len(str) / 2)
 	y := (h / 2)
 	renderStr(v, x, y, style, str)
+}
+
+// Render a string at given position
+func renderChars(v *views.ViewPort, m *Menu, x, y int) {
+	for _, i := range m.items {
+		for _, c := range i.str {
+			var comb []rune
+			w := runewidth.RuneWidth(c)
+			if w == 0 {
+				comb = []rune{c}
+				c = ' '
+				w = 1
+			}
+			v.SetContent(x, y, c, comb, i.style)
+			x += w + 1
+		}
+	}
+}
+
+func renderCenterChars(v *views.ViewPort, m *Menu, w, h int) {
+	x := (w / 2) - (len(m.items) / 2)
+	y := (h / 2)
+	renderChars(v, m, x, y)
 }
 
 // Render a single rune to the screen
