@@ -54,17 +54,19 @@ func main() {
 		if lastGameState == Play || lastGameState == MainMenu {
 			g.MainMenu()
 		}
-		// Setup a game
-		g.InitGame()
 
-		// Run the game
 		if g.state == Play {
-			g.RunGame()
+			// Setup a game
+			g.InitMap()
+			g.InitPlayers()
+
+			// Run the game
+			g.Run()
 		}
 
 		// Quit game if signaled
 		if g.state == Quit {
-			g.QuitGame()
+			g.Quit()
 		}
 
 		// Save game values

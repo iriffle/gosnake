@@ -23,17 +23,17 @@ func handleInput(g *Game) {
 
 		// Quit game and return to Main Menu if Escape key pressed
 		if ev.Key() == tcell.KeyEscape {
-			g.QuitToMenu()
+			g.Return()
 			return
 
 			// Quit game and close window if terminal window exited
 		} else if ev.Key() == tcell.KeyExit {
-			g.QuitGame()
+			g.Quit()
 			return
 
 			// Restart game if F1 pressed
 		} else if ev.Key() == tcell.KeyF1 {
-			g.RestartGame()
+			g.Restart()
 			return
 
 			// Pause game if F12 pressed
@@ -120,8 +120,8 @@ func handlePause(g *Game) {
 // Handle main menu input
 func handleMenuInput(g *Game, m *Menu) int {
 	var s int
-	for i, item := range m.items {
-		if item.selected {
+	for i := range m.items {
+		if m.items[i].selected {
 			s = i
 		}
 	}

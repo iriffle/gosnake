@@ -12,14 +12,16 @@ import (
 type Profile struct {
 	Name  string
 	Color string
+	Char  rune
 }
 
 // NewProfile creates a new player profile with a given name
 // and color.
-func NewProfile(name string, color string) *Profile {
+func NewProfile(name string, color string, char rune) *Profile {
 	p := Profile{
 		Name:  name,
 		Color: color,
+		Char:  char,
 	}
 	return &p
 }

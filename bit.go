@@ -98,7 +98,7 @@ func NewRandomBitLine(g *Game, m *GameMap, points int, char rune, style tcell.St
 // Move a Bit in random direction
 func (b *Bit) Move(m *GameMap) {
 	r := [2]int{0, 0}
-	for i, _ := range r {
+	for i := range r {
 		random := randBool()
 		if random {
 			r[i] = 1
@@ -168,12 +168,12 @@ func NewRandomBite(m *GameMap, style tcell.Style, random bool) *Bite {
 }
 
 // ExplodeBite triggers a bite explosion based on bite direction type.
-func (b *Bite) ExplodeBite(g *Game, m, biteMap *GameMap) {
-	b.style = g.style.BiteExplodedStyle
+func (b *Bite) ExplodeBite(m, biteMap *GameMap, explodedStyle, defStyle tcell.Style) {
+	b.style = explodedStyle
 	time.Sleep(500 * time.Millisecond)
-	b.ExplodeDir(biteMap, m, BiteExplodeRune, g.style.BiteExplodedStyle, true, (30 * time.Millisecond))
+	b.ExplodeDir(biteMap, m, BiteExplodeRune, explodedStyle, true, (30 * time.Millisecond))
 	time.Sleep(10 * time.Second)
-	b.ExplodeDir(biteMap, m, ' ', g.style.DefStyle, false, 0)
+	b.ExplodeDir(biteMap, m, ' ', defStyle, false, 0)
 }
 
 func (b *Bite) ExplodeDir(biteMap, m *GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {

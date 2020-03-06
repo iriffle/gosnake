@@ -30,7 +30,7 @@ func (e *Entity) Move(dx, dy int) {
 	e.pos[0].x += dx
 	e.pos[0].y += dy
 
-	for i, _ := range e.pos {
+	for i := range e.pos {
 		if !first {
 			e.pos[i].ox = e.pos[i].x
 			e.pos[i].oy = e.pos[i].y

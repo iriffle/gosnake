@@ -86,7 +86,7 @@ func (p *Player) IsOnBite(g *Game, m *GameMap) int {
 		for i := 0; i < 4; i++ {
 			p.AddSegment(p.pos[0].char, p.pos[0].style)
 		}
-		go b.ExplodeBite(g, m, g.biteMap)
+		go b.ExplodeBite(m, g.biteMap, g.style.BiteExplodedStyle, g.style.DefStyle)
 		return i
 	}
 	return -1
@@ -115,8 +115,8 @@ func (p *Player) IsBlocked(m *GameMap, biteMap *GameMap, entities []*Entity, pla
 
 // Check if player is blocked by its own body
 func (p *Player) IsBlockedBySelf(dx, dy int) bool {
-	for a, i := range p.pos {
-		if p.pos[0].x+dx == i.x && p.pos[0].y+dy == i.y && !(a == 0) && !(a == 1) {
+	for i := range p.pos {
+		if p.pos[0].x+dx == p.pos[i].x && p.pos[0].y+dy == p.pos[i].y && !(i == 0) && !(i == 1) {
 			return true
 		}
 	}
@@ -125,9 +125,9 @@ func (p *Player) IsBlockedBySelf(dx, dy int) bool {
 
 // Check if player is blocked by another player
 func (p *Player) IsBlockedByPlayer(players []*Player, dx, dy int) bool {
-	for _, player := range players {
-		for _, i := range player.pos {
-			if p.pos[0].x+dx == i.x && p.pos[0].y+dy == i.y && !(p.name == player.name) {
+	for e := range players {
+		for i := range players[e].pos {
+			if p.pos[0].x+dx == players[e].pos[i].x && p.pos[0].y+dy == players[e].pos[i].y && !(p.name == players[e].name) {
 				return true
 			}
 		}
@@ -137,12 +137,10 @@ func (p *Player) IsBlockedByPlayer(players []*Player, dx, dy int) bool {
 
 // Check if player is blocked by an entity
 func (p *Player) IsBlockedByEntity(entities []*Entity, players []*Player, dx, dy int) bool {
-	for _, p := range players {
-		for _, entity := range entities {
-			for _, i := range entity.pos {
-				if p.pos[0].x+dx == i.x && p.pos[0].y+dy == i.y && i.blocked {
-					return true
-				}
+	for e := range entities {
+		for i := range entities[e].pos {
+			if p.pos[0].x+dx == entities[e].pos[i].x && p.pos[0].y+dy == entities[e].pos[i].y && entities[e].pos[i].blocked {
+				return true
 			}
 		}
 	}

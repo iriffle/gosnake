@@ -14,6 +14,7 @@ type GameMap struct {
 	Y        int
 	Objects  [][]*Object
 	BitChan  chan bool
+	BiteChan []chan bool
 	WallChan []chan bool
 }
 
@@ -41,18 +42,19 @@ func (m *GameMap) InitMapBoundary(wallRune, floorRune rune, style tcell.Style) {
 
 // Generate level 1 map which is just an open map with walls around perimeter
 func (m *GameMap) InitLevel1(g *Game) {
-	m.BitChan = make(chan bool)
-	go m.RandomBits(g, 2, 10, 3*time.Second, m.BitChan)
+	go m.RandomBits(g, 2, 10, 3*time.Second)
 	go m.RandomLines(g, 2)
 }
 
 func (m *GameMap) InitLevel2(g *Game) {
-	g.bitQuit = make(chan bool)
+	m.BitChan = make(chan bool, 2)
 	go g.handleBits(m)
 }
 
 func (m *GameMap) InitLevel3(g *Game) {
-	go m.RandomBites(g, 1, 3, (20 * time.Second), false)
+	bChan := make(chan bool, 2)
+	m.BiteChan = append(m.BiteChan, bChan)
+	go m.RandomBites(g, 1, 3, (20 * time.Second), false, m.BiteChan[0])
 }
 
 func (m *GameMap) InitLevel4(g *Game) {
@@ -62,16 +64,21 @@ func (m *GameMap) InitLevel4(g *Game) {
 }
 
 func (m *GameMap) InitLevel5(g *Game) {
-	m.MakeWallChan(6)
-	go m.MovingWall(g, m.Width/4, 6, DirUp, 1, 5, WallRune, g.style.DefStyle, m.WallChan[2])
-	go m.MovingWall(g, (m.Width/4 + 1), 6, DirUp, 1, 5, WallRune, g.style.DefStyle, m.WallChan[3])
-	go m.MovingWall(g, (m.Width/4 + 2), 6, DirUp, 1, 5, WallRune, g.style.DefStyle, m.WallChan[4])
-	go m.MovingWall(g, (m.Width - m.Width/4), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle, m.WallChan[5])
-	go m.MovingWall(g, ((m.Width - m.Width/4) - 1), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle, m.WallChan[6])
-	go m.MovingWall(g, ((m.Width - m.Width/4) - 2), m.Height-6, DirDown, 1, 5, WallRune, g.style.DefStyle, m.WallChan[7])
+	bChan := make(chan bool, 2)
+	m.BiteChan = append(m.BiteChan, bChan)
+	go m.RandomBites(g, 1, 3, (20 * time.Second), true, m.BiteChan[1])
 }
 
 func (m *GameMap) InitLevel6(g *Game) {
+	m.BiteChan[0] <- true
+	m.MakeWallChan(4)
+	go m.MovingWall(g, m.Width/4, 6, DirUp, 1, 7, WallRune, g.style.DefStyle, m.WallChan[2])
+	go m.MovingWall(g, (m.Width/4 + 1), 6, DirUp, 1, 7, WallRune, g.style.DefStyle, m.WallChan[3])
+	go m.MovingWall(g, (m.Width - m.Width/4), m.Height-6, DirDown, 1, 7, WallRune, g.style.DefStyle, m.WallChan[4])
+	go m.MovingWall(g, ((m.Width - m.Width/4) - 1), m.Height-6, DirDown, 1, 7, WallRune, g.style.DefStyle, m.WallChan[5])
+}
+
+func (m *GameMap) InitLevel7(g *Game) {
 	for i := range m.WallChan {
 		m.WallChan[i] <- true
 	}
@@ -86,33 +93,32 @@ func (m *GameMap) RandomLines(g *Game, numTimes int) {
 	}
 }
 
-func (m *GameMap) RandomBits(g *Game, bitsGen, bitsMax int, dur time.Duration, quit chan bool) {
+func (m *GameMap) RandomBits(g *Game, bitsGen, bitsMax int, dur time.Duration) {
 	for {
-		select {
-		default:
-			for i := 0; i < bitsGen; i++ {
-				if len(g.bits)-bitsGen < bitsMax {
-					newB := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
-					g.bits = append(g.bits, newB)
-				}
-			}
-			time.Sleep(dur)
-		case <-quit:
-			return
-		}
-
-	}
-}
-
-func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration, random bool) {
-	for {
-		for i := 0; i < bitesGen; i++ {
-			if len(g.bites)-bitesGen < bitesMax {
-				newB := NewRandomBite(m, g.style.BiteStyle, random)
-				g.bites = append(g.bites, newB)
+		for i := 0; i < bitsGen; i++ {
+			if len(g.bits)-bitsGen < bitsMax {
+				newB := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
+				g.bits = append(g.bits, newB)
 			}
 		}
 		time.Sleep(dur)
+	}
+}
+
+func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration, random bool, biteChan chan bool) {
+	for {
+		select {
+		default:
+			for i := 0; i < bitesGen; i++ {
+				if len(g.bites)-bitesGen < bitesMax {
+					newB := NewRandomBite(m, g.style.BiteStyle, random)
+					g.bites = append(g.bites, newB)
+				}
+			}
+			time.Sleep(dur)
+		case <-biteChan:
+			return
+		}
 	}
 }
 
@@ -154,7 +160,7 @@ func (m *GameMap) MovingWall(g *Game, x, y, direction, speed, segments int, char
 
 func (m *GameMap) MakeWallChan(num int) {
 	for i := 0; i < num; i++ {
-		c := make(chan bool)
+		c := make(chan bool, 2)
 		m.WallChan = append(m.WallChan, c)
 	}
 }

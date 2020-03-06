@@ -45,8 +45,8 @@ func renderMap(v *views.ViewPort, m *GameMap) {
 
 // Render a menu
 func renderMenu(g *Game, m *Menu, style tcell.Style) {
-	for _, item := range m.items {
-		renderStr(g.gview, item.x, item.y, item.style, item.str)
+	for i := range m.items {
+		renderStr(g.gview, m.items[i].x, m.items[i].y, m.items[i].style, m.items[i].str)
 	}
 	g.screen.Show()
 }
@@ -66,26 +66,26 @@ func renderHighScoreScreen(g *Game, style tcell.Style, max int) {
 	renderCenterStr(g.gview, MapWidth, 4, style, "High Scores")
 	renderCenterStr(g.gview, MapWidth, 6, style, strings.Repeat("=", MapWidth-10))
 	renderCenterStr(g.gview, MapWidth, 10, style, "1 Player:")
-	renderHighScores(g, style, Player1, 14)
+	renderHighScores(g, Player1, 14)
 	renderCenterStr(g.gview, MapWidth, (16 + max*2), style, "2 Player:")
-	renderHighScores(g, style, Player2, (20 + max*2))
+	renderHighScores(g, Player2, (20 + max*2))
 
 	g.screen.Show()
 }
 
 // Render a list of scores for the high score screen
-func renderHighScores(g *Game, style tcell.Style, mode, lastScorePos int) {
+func renderHighScores(g *Game, mode, lastScorePos int) {
 	var scores []*Score
 	if mode == Player1 {
 		scores = g.scores1
 	} else if mode == Player2 {
 		scores = g.scores2
 	}
-	for i, score := range scores {
+	for i := range scores {
 		if i < len(scores) {
-			renderCenterStr(g.gview, MapWidth, lastScorePos+i, style, (score.Name + " - " + strconv.Itoa(score.Score)))
+			renderCenterStr(g.gview, MapWidth, lastScorePos+i, g.style.SelStyle, (scores[i].Name + " - " + strconv.Itoa(scores[i].Score)))
 		} else {
-			renderCenterStr(g.gview, MapWidth, lastScorePos+i, style, "----")
+			renderCenterStr(g.gview, MapWidth, lastScorePos+i, g.style.DefStyle, "----")
 		}
 		lastScorePos++
 	}
@@ -94,8 +94,8 @@ func renderHighScores(g *Game, style tcell.Style, mode, lastScorePos int) {
 // Render the player scores in middle of screen
 func renderScore(v *views.ViewPort, players []*Player, w, h int, style tcell.Style) {
 	scores := ""
-	for i, player := range players {
-		scores = player.name + ": " + strconv.Itoa(player.score) + " "
+	for i := range players {
+		scores = players[i].name + ": " + strconv.Itoa(players[i].score) + " "
 		renderCenterStr(v, w, h+i, style, scores)
 	}
 }
@@ -108,50 +108,50 @@ func renderLevel(v *views.ViewPort, l, w, h int, style tcell.Style) {
 
 // Render a Player
 func renderPlayer(v *views.ViewPort, p *Player) {
-	for _, pos := range p.pos {
+	for i := range p.pos {
 		var comb []rune
 		comb = nil
-		c := pos.char
-		v.SetContent(pos.x, pos.y, c, comb, pos.style)
+		c := p.pos[i].char
+		v.SetContent(p.pos[i].x, p.pos[i].y, c, comb, p.pos[i].style)
 	}
 }
 
 // Render an Entity
 func renderEntity(v *views.ViewPort, e *Entity) {
-	for _, pos := range e.pos {
+	for i := range e.pos {
 		var comb []rune
 		comb = nil
-		c := pos.char
-		v.SetContent(pos.x, pos.y, c, comb, pos.style)
+		c := e.pos[i].char
+		v.SetContent(e.pos[i].x, e.pos[i].y, c, comb, e.pos[i].style)
 	}
 
 }
 
 // Render all Entities
 func renderEntities(v *views.ViewPort, entities []*Entity) {
-	for _, entity := range entities {
-		renderEntity(v, entity)
+	for i := range entities {
+		renderEntity(v, entities[i])
 	}
 }
 
 // Render all Players
 func renderPlayers(v *views.ViewPort, players []*Player) {
-	for _, player := range players {
-		renderPlayer(v, player)
+	for i := range players {
+		renderPlayer(v, players[i])
 	}
 }
 
 // Render all Bits
 func renderBits(v *views.ViewPort, bits []*Bit) {
-	for _, bit := range bits {
-		renderRune(v, bit.x, bit.y, bit.style, bit.char)
+	for i := range bits {
+		renderRune(v, bits[i].x, bits[i].y, bits[i].style, bits[i].char)
 	}
 }
 
 // Render all Bites
 func renderBites(v *views.ViewPort, bites []*Bite) {
-	for _, bite := range bites {
-		renderRune(v, bite.x, bite.y, bite.style, bite.char)
+	for i := range bites {
+		renderRune(v, bites[i].x, bites[i].y, bites[i].style, bites[i].char)
 	}
 }
 
