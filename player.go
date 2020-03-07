@@ -50,7 +50,7 @@ func (p *Player) IsOnBit(g *Game) int {
 	if i != -1 {
 		b := g.bits[i]
 		p.score += b.points
-		p.AddSegment(p.pos[0].char, p.pos[0].style)
+		p.AddSegment(1, p.pos[0].char, p.pos[0].style)
 	}
 	return i
 }
@@ -83,9 +83,7 @@ func (p *Player) IsOnBite(g *Game, m *GameMap) int {
 	if i != -1 {
 		b := g.bites[i]
 		p.score += 50
-		for i := 0; i < 4; i++ {
-			p.AddSegment(p.pos[0].char, p.pos[0].style)
-		}
+		p.AddSegment(4, p.pos[0].char, p.pos[0].style)
 		go b.ExplodeBite(m, g.biteMap, g.style.BiteExplodedStyle, g.style.DefStyle)
 		return i
 	}

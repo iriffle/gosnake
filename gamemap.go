@@ -124,9 +124,7 @@ func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration
 
 func (m *GameMap) MovingWall(g *Game, x, y, direction, speed, segments int, char rune, style tcell.Style, quit chan bool) {
 	e := NewEntity(x, y, direction, speed, char, style)
-	for i := 0; i < segments; i++ {
-		e.AddSegment(char, style)
-	}
+	e.AddSegment(segments, char, style)
 	g.entities = append(g.entities, e)
 	for {
 		select {

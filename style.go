@@ -73,3 +73,10 @@ func GetStyle(bg tcell.Color, fg tcell.Color) tcell.Style {
 
 	return style
 }
+
+func StringToStyle(fg, bg string) tcell.Style {
+	fgColor := tcell.GetColor(fg)
+	bgColor := tcell.GetColor(bg)
+	style := GetStyle(bgColor, fgColor)
+	return style
+}

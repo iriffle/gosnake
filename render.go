@@ -52,15 +52,15 @@ func renderMenu(g *Game, m *Menu, style tcell.Style) {
 }
 
 func renderProfile(g *Game, m *Menu, w, h int, style tcell.Style) {
-	renderCenterChars(g.gview, m, w, h)
+	renderChars(g.gview, m, w, h)
 	g.screen.Show()
 }
 
 // Render the name selection screen
-func renderNameSelect(g *Game, w, h int, charString string) {
+func renderNameSelect(g *Game, w, h int, hStr, charStr string) {
 	g.gview.Clear()
-	renderCenterStr(g.gview, w, h, g.style.DefStyle, "Name of Player:")
-	renderCenterStr(g.gview, w, h+2, g.style.SelStyle, charString+"|")
+	renderCenterStr(g.gview, w, h, g.style.DefStyle, hStr)
+	renderCenterStr(g.gview, w, h+2, g.style.SelStyle, charStr+"|")
 	g.screen.Show()
 }
 
@@ -146,6 +146,13 @@ func renderPlayers(v *views.ViewPort, players []*Player) {
 	}
 }
 
+// Render all objects
+func renderObjects(v *views.ViewPort, objects []*Object) {
+	for i := range objects {
+		renderRune(v, objects[i].x, objects[i].y, objects[i].style, objects[i].char)
+	}
+}
+
 // Render all Bits
 func renderBits(v *views.ViewPort, bits []*Bit) {
 	for i := range bits {
@@ -197,12 +204,6 @@ func renderChars(v *views.ViewPort, m *Menu, x, y int) {
 			x += w + 1
 		}
 	}
-}
-
-func renderCenterChars(v *views.ViewPort, m *Menu, w, h int) {
-	x := (w / 2) - (len(m.items) / 2)
-	y := (h / 2)
-	renderChars(v, m, x, y)
 }
 
 // Render a single rune to the screen

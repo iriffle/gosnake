@@ -29,7 +29,7 @@ const (
 	MaxHighScores = 5
 
 	// Game runes
-	PlayerRune      rune = '௵'
+	PlayerRune      rune = '█'
 	BitRune         rune = '■'
 	WallRune        rune = '▒'
 	FloorRune       rune = ' '
@@ -53,7 +53,8 @@ var (
 	mainOptions            = []string{"Play", "High Scores", "Settings"}
 	playerOptions          = []string{"1 Player", "2 Player"}
 	gameModeOptions        = []string{"Basic", "Advanced", "Battle"}
-	PlayerRunes            = []rune{'█', '■', '◆', '࿖', 'ᚙ', '▚', '⏺', 'ↀ', 'ↈ', 'ʘ', '֍', '߷', '⁂', 'O', 'o', '=', '#', '$'}
+	PlayerRunes            = []rune{'█', '■', '◆', '࿖', 'ᚙ', '▚', 'ↀ', 'ↈ', 'ʘ', '֍', '߷', '⁂', 'O', 'o', '=', '#', '$'}
+	PlayerColors           = []string{"green", "black", "navy", "silver", "purple", "teal", "red", "blue", "lime", "yellow", "fuchsia", "aqua", "white"}
 )
 
 // Game is the main game struct and is used to store and compute general game logic.
@@ -98,7 +99,7 @@ type Data interface {
 }
 
 // InitScreen initializes the tcell screen and sets views/bars and styles.
-func (g *Game) InitScreen() {
+func (g *Game) InitScreen() error {
 
 	// Set style
 	s := SetDefaultStyle()
@@ -131,10 +132,12 @@ func (g *Game) InitScreen() {
 	g.sbar = views.NewTextBar()
 	g.sbar.SetView(g.sview)
 	g.sbar.SetStyle(g.style.DefStyle)
+
+	return nil
 }
 
 // MainMenu displays and handles input for the Main Menu.
-func (g *Game) MainMenu() {
+func (g *Game) MainMenu() error {
 
 	// Setup main menu
 	g.state = MainMenu
@@ -166,11 +169,12 @@ func (g *Game) MainMenu() {
 			cMenu = g.MenuScore(cMenu)
 		}
 	}
+	return nil
 }
 
 func (g *Game) MenuMain() int {
 	var cMenu int
-	g.screen.Clear()
+	g.gview.Clear()
 	i := g.handleMenu(mainOptions)
 	switch i {
 	case -1:
@@ -186,7 +190,7 @@ func (g *Game) MenuMain() int {
 
 func (g *Game) MenuPlayer() int {
 	var cMenu int
-	g.screen.Clear()
+	g.gview.Clear()
 	i := g.handleMenu(playerOptions)
 	switch i {
 	case -1:
@@ -206,7 +210,7 @@ func (g *Game) MenuPlayer() int {
 
 func (g *Game) MenuProfile(cMenu int) int {
 	for cMenu == MenuProfile {
-		g.screen.Clear()
+		g.gview.Clear()
 		g.curProfiles = nil
 
 		for a := 0; a < g.numPlayers; a++ {
@@ -254,7 +258,7 @@ func (g *Game) MenuProfile(cMenu int) int {
 				// If "New Profile" is selected then run getPlayerName to get a name and
 				// create a profile from that name
 			} else {
-				i := g.createProfile()
+				i := CreateProfile(g)
 				if i == MenuMain {
 					break
 				}
@@ -282,7 +286,7 @@ func (g *Game) MenuScore(cMenu int) int {
 }
 
 // InitMap generates new maps for the game.
-func (g *Game) InitMap() {
+func (g *Game) InitMap() error {
 
 	// Initialize game states
 	g.level = 1
@@ -307,10 +311,12 @@ func (g *Game) InitMap() {
 	biteMap.InitMap()
 	biteMap.InitMapBoundary(WallRune, FloorRune, g.style.DefStyle)
 	g.biteMap = biteMap
+
+	return nil
 }
 
 // InitPlayers creates player objects for the game.
-func (g *Game) InitPlayers() {
+func (g *Game) InitPlayers() error {
 	// Set player starting x value to middle of map
 	x := MapWidth / 2
 
@@ -333,10 +339,12 @@ func (g *Game) InitPlayers() {
 		g.bits = append(g.bits, b)
 	}
 	logger.Info("Initialized game with ", strconv.Itoa(g.numPlayers), " players.")
+
+	return nil
 }
 
 // Run is the main game loop.
-func (g *Game) Run() {
+func (g *Game) Run() error {
 
 	// Run a goroutine for each player to handle their own loop
 	// separately from each other and the main game loop
@@ -382,6 +390,8 @@ func (g *Game) Run() {
 	for _, p := range g.players {
 		p.quitChan <- true
 	}
+
+	return nil
 }
 
 // Quit completely exits the game back to terminal.
@@ -421,42 +431,6 @@ func (g *Game) handleMenu(options []string) int {
 		choice = m.GetSelected()
 	}
 	return choice
-}
-
-func (g *Game) handleProfile(options []string) int {
-	choice := 0
-	m := NewMainMenu(options, g.style.DefStyle, g.style.SelStyle, 0)
-	m.SetSelected(0)
-	m.ChangeSelected()
-	for choice == 0 {
-		renderProfile(g, m, MapWidth, MapHeight, g.style.DefStyle)
-		choice = handleMenuInput(g, m)
-	}
-	if choice == 1 {
-		choice = m.GetSelected()
-	}
-	return choice
-}
-
-func (g *Game) createProfile() int {
-	name := ""
-	for name == "" {
-		name = g.getPlayerName(MapWidth, MapHeight)
-		if name != "-quit-" {
-			g.screen.Clear()
-			charList := getCharList(PlayerRunes)
-			i := g.handleProfile(charList)
-			if i == -1 {
-				return MenuMain
-			}
-			p := NewProfile(name, "green", PlayerRunes[i])
-			g.profiles = append(g.profiles, p)
-			WriteProfiles(g.profiles, g.proFile)
-			return MenuProfile
-		}
-		return MenuMain
-	}
-	return MenuMain
 }
 
 // handlePlayer is the player loop and handles a player's
@@ -639,59 +613,6 @@ func (g *Game) handlePause() {
 			logger.Info("Resuming game...")
 		}
 	}
-}
-
-// getPlayerName allows a player to input their name.
-func (g *Game) getPlayerName(w, h int) string {
-	var (
-		char       rune
-		chars      []rune
-		newChars   []rune
-		charString string
-	)
-
-	for {
-		newChars = nil
-		// Render the player select screen
-		renderNameSelect(g, w, h, charString)
-
-		// Get input
-		char = handleStringInput(g)
-
-		// Evaluate input
-		if char == '\r' {
-			isPlayer := g.checkPlayerName(charString)
-			if isPlayer {
-				charString = ""
-				newChars = nil
-				chars = nil
-			} else {
-				return charString
-			}
-		} else if char == '\n' {
-			continue
-		} else if char == '\v' {
-			return "-quit-"
-		} else if char == '\t' {
-			for i := 0; i < len(chars)-1; i++ {
-				newChars = append(newChars, chars[i])
-			}
-			chars = newChars
-			charString = string(chars)
-		} else {
-			chars = append(chars, char)
-			charString = string(chars)
-		}
-	}
-}
-
-func (g *Game) checkPlayerName(name string) bool {
-	for i := range g.profiles {
-		if name == g.profiles[i].Name {
-			return true
-		}
-	}
-	return false
 }
 
 // getFPS tracks variables used to calculate the FPS of the game.

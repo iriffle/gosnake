@@ -65,11 +65,20 @@ func (e *Entity) GetDirection() int {
 }
 
 // Add a segment to the entity
-func (e *Entity) AddSegment(char rune, style tcell.Style) {
-	x := e.pos[len(e.pos)-1].ox
-	y := e.pos[len(e.pos)-1].oy
-	o := NewObject(x, y, char, style, true)
-	e.pos = append(e.pos, o)
+func (e *Entity) AddSegment(num int, char rune, style tcell.Style) {
+	for i := 0; i < num; i++ {
+		x := e.pos[len(e.pos)-1].ox
+		y := e.pos[len(e.pos)-1].oy
+		o := NewObject(x, y, char, style, true)
+		e.pos = append(e.pos, o)
+	}
+}
+
+func (e *Entity) RemoveSegment(num int) {
+	for i := 0; i < num; i++ {
+		e.pos[len(e.pos)-1] = nil
+		e.pos = e.pos[:len(e.pos)-1]
+	}
 }
 
 // Check if player is blocked by an object on the map
@@ -78,4 +87,16 @@ func (e *Entity) IsBlockedByMap(m *GameMap, dx, dy int) bool {
 		return true
 	}
 	return false
+}
+
+func (e *Entity) SetChar(char rune) {
+	for i := range e.pos {
+		e.pos[i].char = char
+	}
+}
+
+func (e *Entity) SetStyle(style tcell.Style) {
+	for i := range e.pos {
+		e.pos[i].style = style
+	}
 }

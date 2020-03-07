@@ -48,20 +48,35 @@ func main() {
 		g := &Game{numPlayers: lastNumPlayers, curProfiles: curProfiles, scoreFile: scoreFile, proFile: proFile}
 
 		// Initialize screen
-		g.InitScreen()
+		err := g.InitScreen()
+		if err != nil {
+			logger.Fatalf("Error initializing screen: %v", err)
+		}
 
 		// Open main menu
 		if lastGameState == Play || lastGameState == MainMenu {
-			g.MainMenu()
+			err := g.MainMenu()
+			if err != nil {
+				logger.Fatalf("Error running MainMenu: %v", err)
+			}
 		}
 
 		if g.state == Play {
 			// Setup a game
-			g.InitMap()
-			g.InitPlayers()
+			err := g.InitMap()
+			if err != nil {
+				logger.Fatalf("Error initializing map: %v", err)
+			}
+			err = g.InitPlayers()
+			if err != nil {
+				logger.Fatalf("Error initializing players: %v", err)
+			}
 
 			// Run the game
-			g.Run()
+			err = g.Run()
+			if err != nil {
+				logger.Errorf("Error during main game loop: %v", err)
+			}
 		}
 
 		// Quit game if signaled
