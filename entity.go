@@ -22,6 +22,29 @@ func NewEntity(x, y, direction, speed int, char rune, style tcell.Style) *Entity
 	return &e
 }
 
+func NewDisplayEntity(w, h, size, x, y int, char rune, style tcell.Style) *Entity {
+	e := NewEntity(w, h, DirAll, 0, char, style)
+	for i := 0; i < size; i++ {
+		e.pos[i].ox += x
+		e.pos[i].oy += y
+		e.AddSegment(1, e.pos[0].char, e.pos[0].style)
+	}
+	return e
+}
+
+func NewColorEntity(w, h int, char rune, style tcell.Style) *Entity {
+	e := NewEntity(w, h, DirAll, 0, char, style)
+	for i := 0; i < len(PlayerColors); i++ {
+		style := StringToStyle(PlayerColors[i], PlayerColors[1])
+		e.pos[i].oy++
+		e.pos[i].style = style
+		if i < len(PlayerColors)-1 {
+			e.AddSegment(1, e.pos[0].char, style)
+		}
+	}
+	return e
+}
+
 // Move the entity's segments
 func (e *Entity) Move(dx, dy int) {
 	first := true
@@ -99,4 +122,9 @@ func (e *Entity) SetStyle(style tcell.Style) {
 	for i := range e.pos {
 		e.pos[i].style = style
 	}
+}
+
+func (e *Entity) RotateDisplay(entities []*Entity, rotation int) {
+	e.SetChar(entities[rotation].pos[0].char)
+	e.SetStyle(entities[rotation].pos[0].style)
 }

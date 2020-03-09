@@ -64,6 +64,15 @@ func (m *Menu) SetSelected(i int) {
 	m.items[i].selected = true
 }
 
+func (m *Menu) SetSelectOnly(i int) {
+	m.items[i].selected = true
+	for a := range m.items {
+		if a != i {
+			m.items[a].selected = false
+		}
+	}
+}
+
 // Gets current highlighted MenuItem
 func (m *Menu) GetSelected() int {
 	for i, item := range m.items {

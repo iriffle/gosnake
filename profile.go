@@ -10,34 +10,42 @@ import (
 )
 
 type Profile struct {
-	Name  string
-	Color string
-	Char  rune
+	Name    string
+	FGColor string
+	BGColor string
+	Char    rune
 }
+
+var (
+	profileControls string = "r = rotate - c = background/foreground"
+)
 
 // NewProfile creates a new player profile with a given name
 // and color.
-func NewProfile(name string, color string, char rune) *Profile {
+func NewProfile(name string, fgColor, bgColor string, char rune) *Profile {
 	p := Profile{
-		Name:  name,
-		Color: color,
-		Char:  char,
+		Name:    name,
+		FGColor: fgColor,
+		BGColor: bgColor,
+		Char:    char,
 	}
 	return &p
 }
 
 // GetStyle returns a tcell Style based on the profile's color.
 func (p *Profile) GetStyle() tcell.Style {
-	color := tcell.GetColor(p.Color)
-	style := GetStyle(DefBGStyle, color)
+	fgColor := tcell.GetColor(p.FGColor)
+	bgColor := tcell.GetColor(p.BGColor)
+	style := GetStyle(bgColor, fgColor)
 	return style
 }
 
 // AssignToPlayer assigns the current profile color to a player.
 func (p *Profile) AssignToPlayer(player *Player) {
 	player.name = p.Name
-	color := tcell.GetColor(p.Color)
-	style := GetStyle(DefBGStyle, color)
+	fgColor := tcell.GetColor(p.FGColor)
+	bgColor := tcell.GetColor(p.BGColor)
+	style := GetStyle(bgColor, fgColor)
 	player.pos[0].style = style
 }
 
@@ -77,139 +85,101 @@ func CreateProfile(g *Game) int {
 		name = GetProfileName(g, MapWidth, MapHeight)
 		if name != "-quit-" {
 			g.gview.Clear()
-			charList := getCharList(PlayerRunes)
-			char, color := EditProfile(g, charList, PlayerColors)
-			if char == -1 {
-				return MenuMain
-			}
-			p := NewProfile(name, PlayerColors[color], PlayerRunes[char])
+			p := NewProfile(name, PlayerColors[0], PlayerColors[1], PlayerRune)
 			g.profiles = append(g.profiles, p)
+			charList := getCharList(PlayerRunes)
+			char := p.Edit(g, charList, PlayerColors)
+			if char == ItemExit {
+				return MenuProfile
+			}
 			WriteProfiles(g.profiles, g.proFile)
 			return MenuProfile
 		}
-		return MenuMain
+		return MenuProfile
 	}
-	return MenuMain
+	return MenuProfile
 }
 
-func EditProfile(g *Game, chars, colors []string) (int, int) {
-	var entities []*Entity
-	var objects []*Object
-	var curColors []string
-	char, color := 0, 0
+func EditProfile(g *Game, p *Profile) int {
+	g.gview.Clear()
+	charList := getCharList(PlayerRunes)
+	char := p.Edit(g, charList, PlayerColors)
+	if char == ItemExit {
+		return MenuProfile
+	}
+	WriteProfiles(g.profiles, g.proFile)
+	return MenuProfile
+}
 
+func RemoveProfile(g *Game, i int) int {
+	g.profiles[i] = g.profiles[len(g.profiles)-1]
+	g.profiles[len(g.profiles)-1] = nil
+	g.profiles = g.profiles[:len(g.profiles)-1]
+	WriteProfiles(g.profiles, g.proFile)
+	return MenuProfile
+}
+
+func (p *Profile) Edit(g *Game, chars, colors []string) int {
 	// Create char and color select menus
-	charMenu := NewMainMenu(chars, g.style.DefStyle, g.style.SelStyle, 0)
-	colorMenu := NewMainMenu(colors, g.style.DefStyle, g.style.DefStyle, 0)
+	charMenu := NewMainMenu(chars, g.DefStyle, g.SelStyle, 0)
+	colorMenu := NewMainMenu(colors, g.DefStyle, g.DefStyle, 0)
 
 	// Set general positioning for screen elements
 	l := len(charMenu.items)
 	w := (MapWidth / 2) - l
 	h := (MapHeight / 2) - 8
 
-	// Create Color Entity to display color selection
-	eColor := NewEntity(w-2, h+2, DirAll, 0, PlayerRune, g.style.DefStyle)
-	for i := 0; i < len(PlayerColors); i++ {
-		style := StringToStyle(PlayerColors[i], PlayerColors[1])
-		eColor.pos[i].oy++
-		eColor.pos[i].style = style
-		if i < len(PlayerColors)-1 {
-			eColor.AddSegment(1, eColor.pos[0].char, style)
-		}
-	}
+	// Create color entity to display color selection bar
+	eColor := NewColorEntity(w-2, h+2, BitRune, g.DefStyle)
 
-	// Create Display Entity to show current selected attributes on
-	eDisplayH := NewEntity(w+8, h+8, DirAll, 0, PlayerRune, g.style.DefStyle)
-	for i := 0; i < 20; i++ {
-		eDisplayH.pos[i].ox++
-		eDisplayH.AddSegment(1, eDisplayH.pos[0].char, eDisplayH.pos[0].style)
-	}
-	style := StringToStyle(PlayerColors[0], PlayerColors[1])
-	eDisplayH.SetStyle(style)
-
-	// Create Display Entity to show current selected attributes on
-	eDisplayV := NewEntity(MapWidth/2, MapHeight/2-6, DirAll, 0, PlayerRune, g.style.DefStyle)
-	for i := 0; i < 11; i++ {
-		eDisplayV.pos[i].oy++
-		eDisplayV.AddSegment(1, eDisplayV.pos[0].char, eDisplayV.pos[0].style)
-	}
-	eDisplayV.SetStyle(style)
-
-	// Create Display Entity to show current selected attributes on
-	eDisplayDL := NewEntity(MapWidth/2-6, MapHeight/2-6, DirAll, 0, PlayerRune, g.style.DefStyle)
-	for i := 0; i < 11; i++ {
-		eDisplayDL.pos[i].oy++
-		eDisplayDL.pos[i].ox++
-		eDisplayDL.AddSegment(1, eDisplayDL.pos[0].char, eDisplayDL.pos[0].style)
-	}
-	eDisplayDL.SetStyle(style)
-
-	// Create Display Entity to show current selected attributes on
-	eDisplayDR := NewEntity(MapWidth/2-6, MapHeight/2+5, DirAll, 0, PlayerRune, g.style.DefStyle)
-	for i := 0; i < 11; i++ {
-		eDisplayDR.pos[i].oy--
-		eDisplayDR.pos[i].ox++
-		eDisplayDR.AddSegment(1, eDisplayDR.pos[0].char, eDisplayDR.pos[0].style)
-	}
-	eDisplayDR.SetStyle(style)
+	// Create display entities for each rotation to show current selected attributes on
+	style := StringToStyle(p.FGColor, p.BGColor)
+	eDisplayH := NewDisplayEntity(w+12, h+8, 20, 1, 0, p.Char, style)
+	eDisplayV := NewDisplayEntity(w+l, h+2, 11, 0, 1, p.Char, style)
+	eDisplayDL := NewDisplayEntity(w+l-6, h+2, 11, 1, 1, p.Char, style)
+	eDisplayDR := NewDisplayEntity(w+l-5, h+13, 11, 1, -1, p.Char, style)
 
 	// Create dots to show what attributes are currently selected
-	oChar := NewObject(w, h-1, '■', g.style.SelStyle, false)
-	oColor := NewObject(w-4, h+2, '■', g.style.SelStyle, false)
+	oChar := NewObject(w, h-1, BitRune, g.SelStyle, false)
+	oColor := NewObject(w-4, h+2, BitRune, g.SelStyle, false)
 
-	entities = append(entities, eDisplayH, eDisplayDL, eDisplayV, eDisplayDR)
-	objects = append(objects, oColor, oChar)
-	curColors = append(curColors, PlayerColors[0], PlayerColors[1])
+	entities := []*Entity{eDisplayH, eDisplayDL, eDisplayV, eDisplayDR}
+	objects := []*Object{oColor, oChar}
+	cColors := []string{PlayerColors[0], PlayerColors[1]}
+
+	rotation := Horizontal
+	fgMode := true
+	char := ItemNone
 
 	// Display editor and handle input
-	rotation := 0
-	cMode := true
-	for char == 0 {
+	for char == ItemNone {
 		g.gview.Clear()
+		renderCenterStr(g.gview, MapWidth, MapHeight/4, g.SelStyle, "Edit Profile")
+		//renderCenterStr(g.sview, MapWidth, 0, g.DefStyle, profileControls)
 		renderObjects(g.gview, objects)
 		renderEntity(g.gview, eColor)
 		renderEntity(g.gview, entities[rotation])
-		renderProfile(g, charMenu, w, h, g.style.DefStyle)
-		char, curColors = handleProfileInput(g, entities[rotation], oColor, oChar, charMenu, colorMenu, curColors, rotation, cMode)
+		renderProfile(g, charMenu, w, h, g.DefStyle)
+		char, rotation, cColors = handleProfileInput(g, entities, oColor, oChar, charMenu, colorMenu, cColors, rotation, fgMode)
 		switch char {
-		case 2:
-			eDisplayDL.SetChar(entities[rotation].pos[0].char)
-			eDisplayDL.SetStyle(entities[rotation].pos[0].style)
+		case BGMode:
+			eColor.SetChar(PlayerRune)
+			fgMode = false
 			char = 0
-			rotation = 1
-		case 3:
-			eDisplayV.SetChar(entities[rotation].pos[0].char)
-			eDisplayV.SetStyle(entities[rotation].pos[0].style)
-			char = 0
-			rotation = 2
-		case 4:
-			eDisplayDR.SetChar(entities[rotation].pos[0].char)
-			eDisplayDR.SetStyle(entities[rotation].pos[0].style)
-			char = 0
-			rotation = 3
-		case 5:
-			eDisplayH.SetChar(entities[rotation].pos[0].char)
-			eDisplayH.SetStyle(entities[rotation].pos[0].style)
-			char = 0
-			rotation = 0
-		case 6:
-			cMode = false
-			char = 0
-		case 7:
-			cMode = true
+		case FGMode:
+			eColor.SetChar(BitRune)
+			fgMode = true
 			char = 0
 		}
 	}
 	// Get selected attributes after enter is pressed
-	if char == 1 {
-		char = charMenu.GetSelected()
-		color = colorMenu.GetSelected()
+	if char == ItemEnter {
+		p.Char = PlayerRunes[charMenu.GetSelected()]
+		p.FGColor = cColors[0]
+		p.BGColor = cColors[1]
 	}
-	return char, color
-}
 
-func RotateDisplay(entities []*Entity) {
-
+	return char
 }
 
 // GetProfileName allows a player to input their name.

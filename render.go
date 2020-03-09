@@ -14,6 +14,7 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 
 	// Clear screen for redraw
 	g.gview.Clear()
+	g.screen.ShowCursor(0, MapHeight)
 
 	// Draw game map
 	renderMap(g.gview, m)
@@ -22,14 +23,14 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 	renderMap(g.gview, g.biteMap)
 
 	if g.numPlayers == 1 {
-		renderLevel(g.gview, g.level, m.Width, m.Height, g.style.SelStyle)
+		renderLevel(g.gview, g.level, m.Width, m.Height, g.SelStyle)
 	}
-	renderScore(g.gview, g.players, m.Width, m.Height, g.style.SelStyle)
+	renderScore(g.gview, g.players, m.Width, m.Height, g.SelStyle)
 	renderBits(g.gview, g.bits)
 	renderBites(g.gview, g.bites)
 	renderEntities(g.gview, g.entities)
 	renderPlayers(g.gview, g.players)
-	g.sbar.SetCenter(controls, g.style.DefStyle)
+	g.sbar.SetCenter(controls, g.DefStyle)
 	g.sbar.Draw()
 	g.screen.Show()
 }
@@ -59,8 +60,8 @@ func renderProfile(g *Game, m *Menu, w, h int, style tcell.Style) {
 // Render the name selection screen
 func renderNameSelect(g *Game, w, h int, hStr, charStr string) {
 	g.gview.Clear()
-	renderCenterStr(g.gview, w, h, g.style.DefStyle, hStr)
-	renderCenterStr(g.gview, w, h+2, g.style.SelStyle, charStr+"|")
+	renderCenterStr(g.gview, w, h, g.DefStyle, hStr)
+	renderCenterStr(g.gview, w, h+2, g.SelStyle, charStr+"|")
 	g.screen.Show()
 }
 
@@ -88,9 +89,9 @@ func renderHighScores(g *Game, mode, lastScorePos int) {
 	}
 	for i := range scores {
 		if i < len(scores) {
-			renderCenterStr(g.gview, MapWidth, lastScorePos+i, g.style.SelStyle, (scores[i].Name + " - " + strconv.Itoa(scores[i].Score)))
+			renderCenterStr(g.gview, MapWidth, lastScorePos+i, g.SelStyle, (scores[i].Name + " - " + strconv.Itoa(scores[i].Score)))
 		} else {
-			renderCenterStr(g.gview, MapWidth, lastScorePos+i, g.style.DefStyle, "----")
+			renderCenterStr(g.gview, MapWidth, lastScorePos+i, g.DefStyle, "----")
 		}
 		lastScorePos++
 	}
@@ -211,4 +212,44 @@ func renderRune(v *views.ViewPort, x, y int, style tcell.Style, char rune) {
 	var comb []rune
 	comb = nil
 	v.SetContent(x, y, char, comb, style)
+}
+
+func renderGoLogo(g *Game, w, h int) {
+	w = w - 10
+	h = h - 12
+	style := GetStyle(g.DefBGColor, White)
+	renderStr(g.gview, w+6, h, style, "______")
+	renderStr(g.gview, w+5, h+1, style, "//   ) )")
+	renderStr(g.gview, w+4, h+2, style, "//         ___")
+	renderStr(g.gview, w+3, h+3, style, "//  ____  //   ) )")
+	renderStr(g.gview, w+2, h+4, style, "//    / / //   / /")
+	renderStr(g.gview, w+1, h+5, style, "((____/ / ((___/ /")
+	g.screen.Show()
+}
+
+func renderSnakeLogo(g *Game, w, h int) {
+	w = w - 33
+	h = h - 17
+	style := GetStyle(g.DefBGColor, Green)
+	redStyle := GetStyle(g.DefBGColor, Red)
+	renderStr(g.gview, w, h, style, "           /^\\/^\\")
+	renderStr(g.gview, w, h+1, style, "         _|__|  O|")
+	renderStr(g.gview, w+8, h+2, style, "/~     \\_/ \\")
+	renderStr(g.gview, w, h+2, redStyle, "\\/")
+	renderStr(g.gview, w+6, h+3, style, "|__________/  \\")
+	renderStr(g.gview, w, h+3, redStyle, " \\____")
+	renderStr(g.gview, w, h+4, style, "       \\_______      \\")
+	renderStr(g.gview, w, h+5, style, "                `\\     \\                   \\")
+	renderStr(g.gview, w, h+6, style, "                  |     |                   \\")
+	renderStr(g.gview, w, h+7, style, "                 /      /                    \\")
+	renderStr(g.gview, w, h+8, style, "                /     /                       \\\\")
+	renderStr(g.gview, w, h+9, style, "              /      /                         \\ \\")
+	renderStr(g.gview, w, h+10, style, "             /     /                            \\  \\")
+	renderStr(g.gview, w, h+11, style, "           /     /             _----_           \\   \\")
+	renderStr(g.gview, w, h+12, style, "          /     /           _-~      ~-_         |   |")
+	renderStr(g.gview, w, h+13, style, "         (      (        _-~    _--_    ~-_     _/   |")
+	renderStr(g.gview, w, h+14, style, "          \\      ~-____-~    _-~    ~-_    ~-_-~    /")
+	renderStr(g.gview, w, h+15, style, "            ~-_           _-~          ~-_       _-~")
+	renderStr(g.gview, w, h+16, style, "               ~--______-~                ~-___-~")
+	g.screen.Show()
 }

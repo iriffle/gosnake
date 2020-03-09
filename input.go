@@ -130,30 +130,30 @@ func handleMenuInput(g *Game, m *Menu) int {
 	case *tcell.EventKey:
 		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyExit {
 			g.state = Quit
-			return -1
+			return ItemExit
 		} else if ev.Key() == tcell.KeyUp {
 			if s > 0 {
 				m.items[s-1].selected = true
 				m.items[s].selected = false
 				m.ChangeSelected()
-				return 0
+				return ItemNone
 			}
 		} else if ev.Key() == tcell.KeyDown {
 			if s < (len(m.items) - 1) {
 				m.items[s+1].selected = true
 				m.items[s].selected = false
 				m.ChangeSelected()
-				return 0
+				return ItemNone
 			}
 		} else if ev.Key() == tcell.KeyEnter {
-			return 1
+			return ItemEnter
 		}
 	}
-	return 0
+	return ItemNone
 }
 
 // Handle profile input
-func handleProfileInput(g *Game, e *Entity, oColor, oChar *Object, char, color *Menu, curColors []string, rotation int, cMode bool) (int, []string) {
+func handleProfileInput(g *Game, entities []*Entity, oColor, oChar *Object, char, color *Menu, cColors []string, rotation int, fgMode bool) (int, int, []string) {
 	var s, cs int
 	var style tcell.Style
 	for i := range char.items {
@@ -171,81 +171,85 @@ func handleProfileInput(g *Game, e *Entity, oColor, oChar *Object, char, color *
 	case *tcell.EventKey:
 		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyExit {
 			g.state = Quit
-			return -1, curColors
+			return ItemExit, rotation, cColors
 		} else if ev.Key() == tcell.KeyLeft || ev.Rune() == 'a' {
 			if s > 0 {
-				char.items[s-1].selected = true
-				char.items[s].selected = false
-				e.SetChar(PlayerRunes[char.GetSelected()])
+				char.SetSelectOnly(s - 1)
+				for i := range entities {
+					entities[i].SetChar(PlayerRunes[char.GetSelected()])
+				}
 				char.ChangeSelected()
 				oChar.x -= 2
-				return 0, curColors
+				return ItemNone, rotation, cColors
 			}
 		} else if ev.Key() == tcell.KeyRight || ev.Rune() == 'd' {
 			if s < (len(char.items) - 1) {
-				char.items[s+1].selected = true
-				char.items[s].selected = false
-				e.SetChar(PlayerRunes[char.GetSelected()])
-				char.ChangeSelected()
+				char.SetSelectOnly(s + 1)
+				for i := range entities {
+					entities[i].SetChar(PlayerRunes[char.GetSelected()])
+				}
+				color.ChangeSelected()
 				oChar.x += 2
-				return 0, curColors
+				return ItemNone, rotation, cColors
 			}
 		} else if ev.Key() == tcell.KeyUp || ev.Rune() == 'w' {
 			if cs > 0 {
 
-				color.items[cs-1].selected = true
-				color.items[cs].selected = false
-				if cMode {
-					style = StringToStyle(color.items[cs-1].str, curColors[1])
-					curColors[0] = color.items[cs-1].str
+				color.SetSelectOnly(cs - 1)
+				if fgMode {
+					style = StringToStyle(color.items[cs-1].str, cColors[1])
+					cColors[0] = color.items[cs-1].str
 				} else {
-					style = StringToStyle(curColors[0], color.items[cs-1].str)
-					curColors[1] = color.items[cs-1].str
+					style = StringToStyle(cColors[0], color.items[cs-1].str)
+					cColors[1] = color.items[cs-1].str
 				}
-				e.SetStyle(style)
-				char.ChangeSelected()
+				for i := range entities {
+					entities[i].SetStyle(style)
+				}
+				color.ChangeSelected()
 				oColor.y--
-				return 0, curColors
+				return ItemNone, rotation, cColors
 			}
 		} else if ev.Key() == tcell.KeyDown || ev.Rune() == 's' {
 			if cs < (len(color.items) - 1) {
-				color.items[cs+1].selected = true
-				color.items[cs].selected = false
-				if cMode {
-					style = StringToStyle(color.items[cs+1].str, curColors[1])
-					curColors[0] = color.items[cs+1].str
+				color.SetSelectOnly(cs + 1)
+				if fgMode {
+					style = StringToStyle(color.items[cs+1].str, cColors[1])
+					cColors[0] = color.items[cs+1].str
 				} else {
-					style = StringToStyle(curColors[0], color.items[cs+1].str)
-					curColors[1] = color.items[cs+1].str
+					style = StringToStyle(cColors[0], color.items[cs+1].str)
+					cColors[1] = color.items[cs+1].str
 				}
-				e.SetStyle(style)
+				for i := range entities {
+					entities[i].SetStyle(style)
+				}
 				char.ChangeSelected()
 				oColor.y++
-				return 0, curColors
+				return ItemNone, rotation, cColors
 			}
 		} else if ev.Rune() == 'r' {
 			switch rotation {
-			case 0:
-				return 2, curColors
-			case 1:
-				return 3, curColors
-			case 2:
-				return 4, curColors
-			case 3:
-				return 5, curColors
+			case Horizontal:
+				return ItemNone, DiagLeft, cColors
+			case DiagLeft:
+				return ItemNone, Vertical, cColors
+			case Vertical:
+				return ItemNone, DiagRight, cColors
+			case DiagRight:
+				return ItemNone, Horizontal, cColors
 			}
 		} else if ev.Rune() == 'c' {
-			switch cMode {
+			switch fgMode {
 			case true:
-				return 6, curColors
+				return BGMode, rotation, cColors
 			case false:
-				return 7, curColors
+				return FGMode, rotation, cColors
 			}
 		} else if ev.Key() == tcell.KeyEnter {
-			return 1, curColors
+			return ItemEnter, rotation, cColors
 		}
 	}
-	return 0, curColors
+	return ItemNone, rotation, cColors
 }
 
 func handleStringInput(g *Game) rune {

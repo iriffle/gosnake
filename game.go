@@ -53,8 +53,8 @@ var (
 	mainOptions            = []string{"Play", "High Scores", "Settings"}
 	playerOptions          = []string{"1 Player", "2 Player"}
 	gameModeOptions        = []string{"Basic", "Advanced", "Battle"}
-	PlayerRunes            = []rune{'█', '■', '◆', '࿖', 'ᚙ', '▚', 'ↀ', 'ↈ', 'ʘ', '֍', '߷', '⁂', 'O', 'o', '=', '#', '$'}
-	PlayerColors           = []string{"green", "black", "navy", "silver", "purple", "teal", "red", "blue", "lime", "yellow", "fuchsia", "aqua", "white"}
+	PlayerRunes            = []rune{'█', '■', '◆', '࿖', 'ᚙ', '▚', 'ↀ', 'ↈ', 'ʘ', '֍', '߷', '⁂', 'O', 'o', '=', '#', '$', '+', '-', '!', '('}
+	PlayerColors           = []string{"white", "black", "silver", "green", "lime", "blue", "navy", "aqua", "teal", "red", "purple", "fuschia"}
 )
 
 // Game is the main game struct and is used to store and compute general game logic.
@@ -73,7 +73,6 @@ type Game struct {
 	bits     []*Bit    // All bits currently in game (square dots)
 	gameMap  *GameMap  // Game map
 	biteMap  *GameMap  // Bite map
-	style    *Style    // The game's current color styles
 
 	// Score and profile tracking
 	scores1     []*Score   // 1 player scores
@@ -91,19 +90,15 @@ type Game struct {
 	fps        int       // Game FPS
 	frames     int       // Used to track game FPS
 	bitQuit    chan bool // Used to close handlebits goroutine
-}
 
-type Data interface {
-	Encode() []byte
-	Decode()
+	Style
 }
 
 // InitScreen initializes the tcell screen and sets views/bars and styles.
 func (g *Game) InitScreen() error {
 
 	// Set style
-	s := SetDefaultStyle()
-	g.style = s
+	g.SetDefaultStyle()
 
 	encoding.Register()
 
@@ -115,7 +110,7 @@ func (g *Game) InitScreen() error {
 		logger.Errorf("Failed to initialize screen: %v", err)
 		os.Exit(1)
 	} else {
-		screen.SetStyle(g.style.DefStyle)
+		screen.SetStyle(g.DefStyle)
 		g.screen = screen
 		logger.Info("Intialized screen...")
 	}
@@ -131,7 +126,7 @@ func (g *Game) InitScreen() error {
 	g.sview = views.NewViewPort(g.screen, SViewStartX, SViewStartY, SViewWidth, SViewHeight)
 	g.sbar = views.NewTextBar()
 	g.sbar.SetView(g.sview)
-	g.sbar.SetStyle(g.style.DefStyle)
+	g.sbar.SetStyle(g.DefStyle)
 
 	return nil
 }
@@ -175,9 +170,11 @@ func (g *Game) MainMenu() error {
 func (g *Game) MenuMain() int {
 	var cMenu int
 	g.gview.Clear()
+	renderSnakeLogo(g, MapWidth/2, MapHeight/2)
+	renderGoLogo(g, MapWidth/2, MapHeight/2)
 	i := g.handleMenu(mainOptions)
 	switch i {
-	case -1:
+	case ItemExit:
 		g.screen.Fini()
 		os.Exit(0)
 	case 0:
@@ -191,9 +188,11 @@ func (g *Game) MenuMain() int {
 func (g *Game) MenuPlayer() int {
 	var cMenu int
 	g.gview.Clear()
+	renderSnakeLogo(g, MapWidth/2, MapHeight/2)
+	renderGoLogo(g, MapWidth/2, MapHeight/2)
 	i := g.handleMenu(playerOptions)
 	switch i {
-	case -1:
+	case ItemExit:
 		return MenuMain
 	case 0:
 		g.numPlayers = 1
@@ -209,7 +208,7 @@ func (g *Game) MenuPlayer() int {
 }
 
 func (g *Game) MenuProfile(cMenu int) int {
-	for cMenu == MenuProfile {
+	for cMenu == MenuProfile || cMenu == MenuEdit || cMenu == MenuRemove {
 		g.gview.Clear()
 		g.curProfiles = nil
 
@@ -225,43 +224,67 @@ func (g *Game) MenuProfile(cMenu int) int {
 			}
 
 			// Add an entry for creating a new profile
-			profileList = append(profileList, "New Profile")
-
-			// If 1 Player mode don't show a number, if 2 player then
-			// show which player number during profile select
-			if g.numPlayers > 1 {
-				pNum = strconv.Itoa(a + 1)
-			} else {
-				pNum = ""
+			if cMenu == MenuProfile {
+				profileList = append(profileList, "New Profile", "Edit Profile ", "Remove Profile ")
 			}
+
 			// Draw the Select Profile text
 			g.screen.Clear()
-			renderCenterStr(g.gview, MapWidth, MapHeight-4, g.style.DefStyle, ("  Select Profile " + pNum + ":"))
+			renderSnakeLogo(g, MapWidth/2, MapHeight/2)
+			renderGoLogo(g, MapWidth/2, MapHeight/2)
+			if cMenu == MenuProfile {
+				// If 1 Player mode don't show a number, if 2 player then
+				// show which player number during profile select
+				if g.numPlayers > 1 {
+					pNum = strconv.Itoa(a + 1)
+				} else {
+					pNum = ""
+				}
+				renderCenterStr(g.gview, MapWidth, MapHeight-4, g.DefStyle, ("  Select Profile " + pNum + ":"))
+			} else if cMenu == MenuEdit {
+				renderCenterStr(g.gview, MapWidth, MapHeight-4, g.DefStyle, ("  Edit Profile:"))
+			} else {
+				renderCenterStr(g.gview, MapWidth, MapHeight-4, g.DefStyle, ("  Remove Profile:"))
+			}
 			g.screen.Show()
 
 			// Draw and handle the player select menu. The list of menu items
 			// is generated using the list of profiles read from file.
-			i := g.handleMenu(profileList)
+			if len(profileList) > 0 {
+				i := g.handleMenu(profileList)
 
-			// Drop back to MenuMain if Escape is pressed
-			if i == -1 {
-				return MenuMain
-				// If any of the profiles are selected then add them to the current profile list
-				// and either proceed to to InitGame or continue loop for second player
-			} else if i < (len(profileList) - 1) {
-				g.curProfiles = append(g.curProfiles, g.profiles[i])
-				g.state = Play
-				if a == g.numPlayers-1 {
-					cMenu = MenuMain
+				// Drop back to MenuMain if Escape is pressed
+				if i == ItemExit {
+					return MenuMain
+					// If any of the profiles are selected then add them to the current profile list
+					// and either proceed to to InitGame or continue loop for second player
+				} else if i < (len(profileList)-3) && cMenu == MenuProfile {
+					g.curProfiles = append(g.curProfiles, g.profiles[i])
+					g.state = Play
+					if a == g.numPlayers-1 {
+						cMenu = MenuMain
+					}
+					continue
+					// If "New Profile" is selected then run getPlayerName to get a name and
+					// create a profile from that name
+				} else if i == (len(profileList)-3) && cMenu == MenuProfile {
+					i := CreateProfile(g)
+					if i == MenuMain {
+						break
+					}
+				} else if i == (len(profileList)-2) && cMenu == MenuProfile {
+					_ = g.MenuProfile(MenuEdit)
+					return MenuProfile
+				} else if i == (len(profileList)-1) && cMenu == MenuProfile {
+					_ = g.MenuProfile(MenuRemove)
+					return MenuProfile
+				} else if cMenu == MenuEdit {
+					_ = EditProfile(g, g.profiles[i])
+				} else if cMenu == MenuRemove {
+					_ = RemoveProfile(g, i)
 				}
-				continue
-				// If "New Profile" is selected then run getPlayerName to get a name and
-				// create a profile from that name
 			} else {
-				i := CreateProfile(g)
-				if i == MenuMain {
-					break
-				}
+				return MenuProfile
 			}
 		}
 	}
@@ -271,7 +294,7 @@ func (g *Game) MenuProfile(cMenu int) int {
 func (g *Game) MenuScore(cMenu int) int {
 	for cMenu == MenuScore {
 		g.screen.Clear()
-		renderHighScoreScreen(g, g.style.DefStyle, MaxHighScores)
+		renderHighScoreScreen(g, g.DefStyle, MaxHighScores)
 
 		// Wait for Escape key to be pressed to return to Main Menu
 		ev := g.screen.PollEvent()
@@ -300,7 +323,7 @@ func (g *Game) InitMap() error {
 	}
 	g.gameMap = m
 	m.InitMap()
-	m.InitMapBoundary(WallRune, FloorRune, g.style.DefStyle)
+	m.InitMapBoundary(WallRune, FloorRune, g.DefStyle)
 	m.InitLevel1(g)
 	logger.Info("Created game map and set to level 1.")
 
@@ -309,7 +332,7 @@ func (g *Game) InitMap() error {
 		Height: m.Height,
 	}
 	biteMap.InitMap()
-	biteMap.InitMapBoundary(WallRune, FloorRune, g.style.DefStyle)
+	biteMap.InitMapBoundary(WallRune, FloorRune, g.DefStyle)
 	g.biteMap = biteMap
 
 	return nil
@@ -335,7 +358,7 @@ func (g *Game) InitPlayers() error {
 	}
 	g.players[0].score = 0
 	for i := 0; i < numBits; i++ {
-		b := NewRandomBit(m, 10, BitRune, g.style.BitStyle)
+		b := NewRandomBit(m, 10, BitRune, g.BitStyle)
 		g.bits = append(g.bits, b)
 	}
 	logger.Info("Initialized game with ", strconv.Itoa(g.numPlayers), " players.")
@@ -379,7 +402,7 @@ func (g *Game) Run() error {
 		}
 
 		// Render the game
-		renderAll(g, g.style.DefStyle, m)
+		renderAll(g, g.DefStyle, m)
 
 		// Keep track of FPS
 		g.getFPS()
@@ -420,11 +443,11 @@ func (g *Game) Restart() {
 // based on input.
 func (g *Game) handleMenu(options []string) int {
 	choice := 0
-	m := NewMainMenu(options, g.style.DefStyle, g.style.SelStyle, 0)
+	m := NewMainMenu(options, g.DefStyle, g.SelStyle, 0)
 	m.SetSelected(0)
 	m.ChangeSelected()
 	for choice == 0 {
-		renderMenu(g, m, g.style.DefStyle)
+		renderMenu(g, m, g.DefStyle)
 		choice = handleMenuInput(g, m)
 	}
 	if choice == 1 {
@@ -454,7 +477,7 @@ func (g *Game) handlePlayer(p *Player) {
 
 					// Generate bits where player's body was during collision
 					for _, i := range p.pos {
-						b := NewBit(i.ox, i.oy, 10, BitRune, BitRandom, g.style.BitStyle)
+						b := NewBit(i.ox, i.oy, 10, BitRune, BitRandom, g.BitStyle)
 						g.bits = append(g.bits, b)
 					}
 
@@ -467,14 +490,14 @@ func (g *Game) handlePlayer(p *Player) {
 					}
 
 					// Reset the player
-					p.Reset(MapWidth/2, MapHeight/2, 3, g.style.BiteExplodedStyle)
+					p.Reset(MapWidth/2, MapHeight/2, 3, g.BiteExplodedStyle)
 					logger.Infof("Player died: %v", p.name)
 
 					// Run if in 1 player mode
 				} else {
 
 					// Kill player
-					p.Kill(g.style.BiteExplodedStyle)
+					p.Kill(g.BiteExplodedStyle)
 					logger.Infof("Player died: %v", p.name)
 
 					// Read high scores from file, compare against current scores
@@ -601,7 +624,7 @@ func (g *Game) handlePause() {
 		logger.Info("Pausing game...")
 
 		// Render "PAUSED" to screen
-		renderCenterStr(g.gview, MapWidth, MapHeight-4, g.style.BitStyle, "PAUSED")
+		renderCenterStr(g.gview, MapWidth, MapHeight-4, g.BitStyle, "PAUSED")
 		g.screen.Show()
 
 		// If unpaused then restart player and bit goroutines

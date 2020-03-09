@@ -36,33 +36,30 @@ type Style struct {
 	BitStyle          tcell.Style
 	BiteStyle         tcell.Style
 	BiteExplodedStyle tcell.Style
+	DefBGColor        tcell.Color
+	DefFGColor        tcell.Color
+	DefSelColor       tcell.Color
 }
 
-func SetDefaultStyle() *Style {
-
-	s := Style{
-		DefStyle:          GetStyle(DefBGStyle, DefFGStyle),
-		SelStyle:          GetStyle(DefBGStyle, SelFGStyle),
-		SelStyleBG:        GetStyle(Aqua, DefFGStyle),
-		BitStyle:          GetStyle(Black, White),
-		BiteStyle:         GetStyle(Black, Fuchsia),
-		BiteExplodedStyle: GetStyle(Black, Red),
-	}
-
-	return &s
+func (s *Style) SetDefaultStyle() {
+	s.DefStyle = GetStyle(DefBGStyle, DefFGStyle)
+	s.SelStyle = GetStyle(DefBGStyle, SelFGStyle)
+	s.SelStyleBG = GetStyle(Aqua, DefFGStyle)
+	s.BitStyle = GetStyle(Black, White)
+	s.BiteStyle = GetStyle(Black, Fuchsia)
+	s.BiteExplodedStyle = GetStyle(Black, Red)
+	s.DefBGColor = Black
+	s.DefFGColor = Silver
+	s.DefSelColor = Aqua
 }
 
-func SetNewStyle(defStyle, selStyle, selStyleBG, bitStyle, biteStyle, biteExplodedStyle tcell.Style, playerColors []tcell.Style) *Style {
-	s := Style{
-		DefStyle:          defStyle,
-		SelStyle:          selStyle,
-		SelStyleBG:        selStyleBG,
-		BitStyle:          bitStyle,
-		BiteStyle:         biteStyle,
-		BiteExplodedStyle: biteExplodedStyle,
-	}
-
-	return &s
+func (s *Style) SetNewStyle(defStyle, selStyle, selStyleBG, bitStyle, biteStyle, biteExplodedStyle tcell.Style, defBGColor, defFGColor, defSelColor tcell.Color, playerColors []tcell.Style) {
+	s.DefStyle = defStyle
+	s.SelStyle = selStyle
+	s.SelStyleBG = selStyleBG
+	s.BitStyle = bitStyle
+	s.BiteStyle = biteStyle
+	s.BiteExplodedStyle = biteExplodedStyle
 }
 
 // Generate a tcell style using a provided background and foreground color

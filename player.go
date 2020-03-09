@@ -84,7 +84,7 @@ func (p *Player) IsOnBite(g *Game, m *GameMap) int {
 		b := g.bites[i]
 		p.score += 50
 		p.AddSegment(4, p.pos[0].char, p.pos[0].style)
-		go b.ExplodeBite(m, g.biteMap, g.style.BiteExplodedStyle, g.style.DefStyle)
+		go b.ExplodeBite(m, g.biteMap, g.BiteExplodedStyle, g.DefStyle)
 		return i
 	}
 	return -1
