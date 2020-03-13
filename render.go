@@ -28,6 +28,7 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 	renderScore(g.gview, g.players, m.Width, m.Height, g.SelStyle)
 	renderBits(g.gview, g.bits)
 	renderBites(g.gview, g.bites)
+	renderItems(g.gview, g.items)
 	renderEntities(g.gview, g.entities)
 	renderPlayers(g.gview, g.players)
 	g.sbar.SetCenter(controls, g.DefStyle)
@@ -165,6 +166,12 @@ func renderBits(v *views.ViewPort, bits []*Bit) {
 func renderBites(v *views.ViewPort, bites []*Bite) {
 	for i := range bites {
 		renderRune(v, bites[i].x, bites[i].y, bites[i].style, bites[i].char)
+	}
+}
+
+func renderItems(v *views.ViewPort, items []*Item) {
+	for i := range items {
+		renderRune(v, items[i].x, items[i].y, items[i].style, items[i].char)
 	}
 }
 

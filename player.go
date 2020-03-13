@@ -12,6 +12,8 @@ type Player struct {
 	name     string
 	score    int
 	count    int
+	items    []*Item
+	style    tcell.Style
 	quitChan chan bool
 	bitChan  chan int
 	biteChan chan int
@@ -92,20 +94,24 @@ func (p *Player) IsOnBite(g *Game, m *GameMap) int {
 
 // Check if player is blocked
 func (p *Player) IsBlocked(m *GameMap, biteMap *GameMap, entities []*Entity, players []*Player, dx, dy int) bool {
-	if p.IsBlockedByPlayer(players, dx, dy) {
-		return true
-	}
-	if p.IsBlockedBySelf(dx, dy) {
-		return true
-	}
 	if p.IsBlockedByMap(m, dx, dy) {
 		return true
 	}
-	if p.IsBlockedByEntity(entities, players, dx, dy) {
-		return true
-	}
-	if p.IsBlockedByMap(biteMap, dx, dy) {
-		return true
+	for i := range p.items {
+		if p.items[i].effect != WallPass && p.items[i].activated {
+			if p.IsBlockedByPlayer(players, dx, dy) {
+				return true
+			}
+			if p.IsBlockedBySelf(dx, dy) {
+				return true
+			}
+			if p.IsBlockedByEntity(entities, players, dx, dy) {
+				return true
+			}
+			if p.IsBlockedByMap(biteMap, dx, dy) {
+				return true
+			}
+		}
 	}
 
 	return false
@@ -143,4 +149,39 @@ func (p *Player) IsBlockedByEntity(entities []*Entity, players []*Player, dx, dy
 		}
 	}
 	return false
+}
+
+func (p *Player) AddItem(item *Item) {
+	p.items = append(p.items, item)
+	p.AdjustItemPos()
+}
+
+func (p *Player) RemoveItem(i int) {
+	p.items[i] = p.items[len(p.items)-1]
+	p.items[len(p.items)-1] = nil
+	p.items = p.items[:len(p.items)-1]
+	p.AdjustItemPos()
+}
+
+func (p *Player) AdjustItemPos() {
+	for i := range p.items {
+		p.items[i].pos = i
+	}
+}
+
+func (p *Player) CheckItemPos(items []*Item) int {
+	for i := range items {
+		if p.pos[0].x == items[i].x && p.pos[0].y == items[i].y {
+			return i
+		}
+	}
+	return -1
+}
+
+func (p *Player) IsOnItem(g *Game) {
+	i := p.CheckItemPos(g.items)
+	if i != -1 {
+		p.AddItem(g.items[i])
+		g.removeItem(i)
+	}
 }

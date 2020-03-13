@@ -6,7 +6,6 @@ import (
 
 // Handle main game player input
 func handleInput(g *Game) {
-
 	// Make adjustments depending on if 1 or 2 player game
 	var p2 *Player
 	p := g.players[0]
@@ -90,6 +89,9 @@ func handleInput(g *Game) {
 			if !(p.direction == DirLeft) {
 				p.direction = DirRight
 			}
+		}
+		if ev.Rune() == 'f' {
+			p.items[0].Activate(p)
 		}
 	}
 }

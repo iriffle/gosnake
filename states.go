@@ -1,7 +1,7 @@
 package main
 
+// Game states
 const (
-	// Game states
 	Play = iota
 	Quit
 	Pause
@@ -9,8 +9,8 @@ const (
 	MainMenu
 )
 
+// Menu pages
 const (
-	// Menu pages
 	MenuMain = iota
 	MenuPlayer
 	MenuMode
@@ -21,8 +21,8 @@ const (
 	MenuSettings
 )
 
+// Direction
 const (
-	// Direction
 	DirUp = iota
 	DirDown
 	DirLeft
@@ -30,15 +30,15 @@ const (
 	DirAll
 )
 
+// Game modes
 const (
-	// Game modes
 	Player1 = iota
 	Player2
 	Battle
 )
 
+// Levels
 const (
-	// Levels
 	Level2 = 20
 	Level3 = 40
 	Level4 = 60
@@ -46,6 +46,7 @@ const (
 	Level6 = 100
 )
 
+// Menu item input values
 const (
 	ItemExit  = -1
 	ItemNone  = 0
@@ -54,9 +55,15 @@ const (
 	FGMode    = 3
 )
 
+// Snake editor rotations
 const (
 	Horizontal = iota
 	DiagLeft
 	Vertical
 	DiagRight
+)
+
+// Player item states
+const (
+	WallPass = iota
 )

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell"
+	"github.com/google/logger"
 )
 
 // The game map struct
@@ -42,40 +43,42 @@ func (m *GameMap) InitMapBoundary(wallRune, floorRune rune, style tcell.Style) {
 
 // Generate level 1 map which is just an open map with walls around perimeter
 func (m *GameMap) InitLevel1(g *Game) {
-	go m.RandomBits(g, 2, 10, 3*time.Second)
-	go m.RandomLines(g, 2)
+	i := NewItem(MapWidth/2+3, MapHeight/2+3, WallPass, (time.Second * 3), '*', g.DefStyle)
+	g.items = append(g.items, i)
+	go m.randomBits(g, 2, 10, 3*time.Second)
+	go m.randomLines(g, 2)
 }
 
 func (m *GameMap) InitLevel2(g *Game) {
 	m.BitChan = make(chan bool, 2)
-	go g.handleBits(m)
+	go g.moveBits(m)
 }
 
 func (m *GameMap) InitLevel3(g *Game) {
 	bChan := make(chan bool, 2)
 	m.BiteChan = append(m.BiteChan, bChan)
-	go m.RandomBites(g, 1, 3, (20 * time.Second), false, m.BiteChan[0])
+	go m.randomBites(g, 1, 3, (20 * time.Second), false, m.BiteChan[0])
 }
 
 func (m *GameMap) InitLevel4(g *Game) {
-	m.MakeWallChan(2)
-	go m.MovingWall(g, 1+15, m.Height/4, DirLeft, 2, 15, WallRune, g.DefStyle, m.WallChan[0])
-	go m.MovingWall(g, m.Width-15, (m.Height - m.Height/4), DirRight, 2, 15, WallRune, g.DefStyle, m.WallChan[1])
+	m.makeWallChan(2)
+	go m.movingWall(g, 1+15, m.Height/4, DirLeft, 2, 15, WallRune, g.DefStyle, m.WallChan[0])
+	go m.movingWall(g, m.Width-15, (m.Height - m.Height/4), DirRight, 2, 15, WallRune, g.DefStyle, m.WallChan[1])
 }
 
 func (m *GameMap) InitLevel5(g *Game) {
 	bChan := make(chan bool, 2)
 	m.BiteChan = append(m.BiteChan, bChan)
-	go m.RandomBites(g, 1, 3, (20 * time.Second), true, m.BiteChan[1])
+	go m.randomBites(g, 1, 3, (20 * time.Second), true, m.BiteChan[1])
 }
 
 func (m *GameMap) InitLevel6(g *Game) {
 	m.BiteChan[0] <- true
-	m.MakeWallChan(4)
-	go m.MovingWall(g, m.Width/4, 6, DirUp, 1, 7, WallRune, g.DefStyle, m.WallChan[2])
-	go m.MovingWall(g, (m.Width/4 + 1), 6, DirUp, 1, 7, WallRune, g.DefStyle, m.WallChan[3])
-	go m.MovingWall(g, (m.Width - m.Width/4), m.Height-6, DirDown, 1, 7, WallRune, g.DefStyle, m.WallChan[4])
-	go m.MovingWall(g, ((m.Width - m.Width/4) - 1), m.Height-6, DirDown, 1, 7, WallRune, g.DefStyle, m.WallChan[5])
+	m.makeWallChan(4)
+	go m.movingWall(g, m.Width/4, 6, DirUp, 1, 7, WallRune, g.DefStyle, m.WallChan[2])
+	go m.movingWall(g, (m.Width/4 + 1), 6, DirUp, 1, 7, WallRune, g.DefStyle, m.WallChan[3])
+	go m.movingWall(g, (m.Width - m.Width/4), m.Height-6, DirDown, 1, 7, WallRune, g.DefStyle, m.WallChan[4])
+	go m.movingWall(g, ((m.Width - m.Width/4) - 1), m.Height-6, DirDown, 1, 7, WallRune, g.DefStyle, m.WallChan[5])
 }
 
 func (m *GameMap) InitLevel7(g *Game) {
@@ -85,7 +88,12 @@ func (m *GameMap) InitLevel7(g *Game) {
 	m.BitChan <- true
 }
 
-func (m *GameMap) RandomLines(g *Game, numTimes int) {
+func (m *GameMap) randomLines(g *Game, numTimes int) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("Error in RandomLines goroutine: %v", r)
+		}
+	}()
 	//for i := 0; i < numTimes; i++ {
 	for {
 		NewRandomBitLine(g, m, 10, BitRune, g.BitStyle)
@@ -93,7 +101,12 @@ func (m *GameMap) RandomLines(g *Game, numTimes int) {
 	}
 }
 
-func (m *GameMap) RandomBits(g *Game, bitsGen, bitsMax int, dur time.Duration) {
+func (m *GameMap) randomBits(g *Game, bitsGen, bitsMax int, dur time.Duration) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("Error in RandomBits goroutine: %v", r)
+		}
+	}()
 	for {
 		for i := 0; i < bitsGen; i++ {
 			if len(g.bits)-bitsGen < bitsMax {
@@ -105,7 +118,12 @@ func (m *GameMap) RandomBits(g *Game, bitsGen, bitsMax int, dur time.Duration) {
 	}
 }
 
-func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration, random bool, biteChan chan bool) {
+func (m *GameMap) randomBites(g *Game, bitesGen, bitesMax int, dur time.Duration, random bool, biteChan chan bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("Error in RandomBites goroutine: %v", r)
+		}
+	}()
 	for {
 		select {
 		default:
@@ -122,10 +140,16 @@ func (m *GameMap) RandomBites(g *Game, bitesGen, bitesMax int, dur time.Duration
 	}
 }
 
-func (m *GameMap) MovingWall(g *Game, x, y, direction, speed, segments int, char rune, style tcell.Style, quit chan bool) {
+func (m *GameMap) movingWall(g *Game, x, y, direction, speed, segments int, char rune, style tcell.Style, quit chan bool) {
 	e := NewEntity(x, y, direction, speed, char, style)
 	e.AddSegment(segments, char, style)
 	g.entities = append(g.entities, e)
+
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("Error in MovingWall goroutine: %v", r)
+		}
+	}()
 	for {
 		select {
 		default:
@@ -156,7 +180,7 @@ func (m *GameMap) MovingWall(g *Game, x, y, direction, speed, segments int, char
 	}
 }
 
-func (m *GameMap) MakeWallChan(num int) {
+func (m *GameMap) makeWallChan(num int) {
 	for i := 0; i < num; i++ {
 		c := make(chan bool, 2)
 		m.WallChan = append(m.WallChan, c)

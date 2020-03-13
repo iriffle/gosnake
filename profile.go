@@ -46,7 +46,7 @@ func (p *Profile) AssignToPlayer(player *Player) {
 	fgColor := tcell.GetColor(p.FGColor)
 	bgColor := tcell.GetColor(p.BGColor)
 	style := GetStyle(bgColor, fgColor)
-	player.pos[0].style = style
+	player.style = style
 }
 
 // DecodeProfiles takes a JSON byte slice and converts it into

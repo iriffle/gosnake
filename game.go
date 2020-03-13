@@ -71,8 +71,9 @@ type Game struct {
 	entities []*Entity // All entities currently in game
 	bites    []*Bite   // All bites currently  in game (triangles)
 	bits     []*Bit    // All bits currently in game (square dots)
-	gameMap  *GameMap  // Game map
-	biteMap  *GameMap  // Bite map
+	items    []*Item
+	gameMap  *GameMap // Game map
+	biteMap  *GameMap // Bite map
 
 	// Score and profile tracking
 	scores1     []*Score   // 1 player scores
@@ -459,7 +460,11 @@ func (g *Game) handleMenu(options []string) int {
 // handlePlayer is the player loop and handles a player's
 // state and  interaction with objects and the game map.
 func (g *Game) handlePlayer(p *Player) {
-
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("Error in handlePlayer goroutine: %v", r)
+		}
+	}()
 	// Continuously loop unless killed through p.ch channel
 	for {
 		select {
@@ -471,48 +476,32 @@ func (g *Game) handlePlayer(p *Player) {
 
 			// Check if player is blocked at all
 			if p.IsBlocked(m, g.biteMap, g.entities, g.players, dx, dy) {
+				// Read high scores from file, compare against current scores
+				// and make changes if necessary
+				g.getScores()
+				g.scores2, scoreChange = UpdateScores(g.scores2, p.name, p.score, g.mode, MaxHighScores)
+				if scoreChange {
+					WriteScores(g.scores1, g.scores2, g.scoreFile)
+				}
 
 				// Run if in 2 player mode
-				if g.numPlayers > 1 {
-
+				if g.numPlayers == 1 {
+					// Kill player
+					p.Kill(g.BiteExplodedStyle)
+					logger.Infof("Player died: %v", p.name)
+					// Wait a short period of time then restart the game
+					time.Sleep(100 * time.Millisecond)
+					g.Restart()
+				} else {
 					// Generate bits where player's body was during collision
 					for _, i := range p.pos {
 						b := NewBit(i.ox, i.oy, 10, BitRune, BitRandom, g.BitStyle)
 						g.bits = append(g.bits, b)
 					}
-
-					// Read high scores from file, compare against current scores
-					// and make changes if necessary
-					g.getScores()
-					g.scores2, scoreChange = UpdateScores(g.scores2, p.name, p.score, g.mode, MaxHighScores)
-					if scoreChange {
-						WriteScores(g.scores1, g.scores2, g.scoreFile)
-					}
-
-					// Reset the player
 					p.Reset(MapWidth/2, MapHeight/2, 3, g.BiteExplodedStyle)
 					logger.Infof("Player died: %v", p.name)
-
-					// Run if in 1 player mode
-				} else {
-
-					// Kill player
-					p.Kill(g.BiteExplodedStyle)
-					logger.Infof("Player died: %v", p.name)
-
-					// Read high scores from file, compare against current scores
-					// and make changes if necessary
-					g.getScores()
-					g.scores1, scoreChange = UpdateScores(g.scores1, p.name, p.score, g.mode, MaxHighScores)
-					if scoreChange {
-						WriteScores(g.scores1, g.scores2, g.scoreFile)
-					}
-
-					// Wait a short period of time then restart the game
-					time.Sleep(100 * time.Millisecond)
-					g.screen.Fini()
-					g.state = Restart
 				}
+
 			} else {
 				// Move player if not blocked
 				p.Move(dx, dy)
@@ -526,6 +515,7 @@ func (g *Game) handlePlayer(p *Player) {
 			if bitePos != -1 {
 				p.biteChan <- bitePos
 			}
+			p.IsOnItem(g)
 
 			// Calculate player's speed based on their score.
 			// Movement is done by causing the player goroutine
@@ -541,7 +531,12 @@ func (g *Game) handlePlayer(p *Player) {
 }
 
 // handleBits causes bits on map to move in a random direction in timed intervals.
-func (g *Game) handleBits(m *GameMap) {
+func (g *Game) moveBits(m *GameMap) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("Error in handleBits goroutine: %v", r)
+		}
+	}()
 	for {
 		select {
 		default:
@@ -632,7 +627,7 @@ func (g *Game) handlePause() {
 			for _, p := range g.players {
 				go g.handlePlayer(p)
 			}
-			go g.handleBits(m)
+			go g.moveBits(m)
 			logger.Info("Resuming game...")
 		}
 	}
@@ -675,6 +670,12 @@ func (g *Game) removeBite(i int) {
 	g.bites[i] = g.bites[len(g.bites)-1]
 	g.bites[len(g.bites)-1] = nil
 	g.bites = g.bites[:len(g.bites)-1]
+}
+
+func (g *Game) removeItem(i int) {
+	g.items[i] = g.items[len(g.items)-1]
+	g.items[len(g.items)-1] = nil
+	g.items = g.items[:len(g.items)-1]
 }
 
 // getScores reads scores from the game's scoreFile and stores them in it's
