@@ -101,8 +101,6 @@ func UpdateScores(scores []*Score, pName string, pScore, mode, max int) ([]*Scor
 				}
 
 				// Sort the scores so that they are in order highest to lowest
-				scores = SortScores(scores)
-
 				listScores = GetScores(scores)
 				logger.Infof("New scores: %v", listScores)
 			}
@@ -112,7 +110,6 @@ func UpdateScores(scores []*Score, pName string, pScore, mode, max int) ([]*Scor
 			s := NewScore(pName, mode, pScore)
 			scores = AddScore(scores, s)
 			scoreChange = true
-
 			listScores = GetScores(scores)
 			logger.Infof("Scores Empty. New scores: %v", listScores)
 		}
@@ -153,6 +150,8 @@ func DecodeScores(byteValue []byte) ([]*Score, []*Score) {
 func EncodeScores(newScores1, newScores2 []*Score) []byte {
 	var scores []*Score
 
+	newScores1 = SortScores(newScores1)
+	newScores2 = SortScores(newScores2)
 	for _, score := range newScores1 {
 		scores = append(scores, score)
 	}

@@ -369,7 +369,7 @@ func (g *Game) InitPlayers() error {
 		pChar := g.curProfiles[i].Char
 
 		// Create player and
-		p := entity.NewPlayer(x, y, 0, (DirLeft - i), pChar, pName, pStyle)
+		p := entity.NewPlayer(x, y, 0, (entity.DirLeft - i), pChar, pName, pStyle)
 		g.players = append(g.players, p)
 	}
 	g.players[0].SetScore(0)
@@ -663,7 +663,7 @@ func (g *Game) getFPS() {
 func (g *Game) moveInterval(speed, direction int) time.Duration {
 	ms := 80 //120
 	switch direction {
-	case DirUp, DirDown:
+	case entity.DirUp, entity.DirDown:
 		ms = 140 //180
 	}
 	//ms -= (speed / 100)

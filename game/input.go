@@ -17,8 +17,6 @@ func handleInput(g *Game) {
 	} else {
 		p2 = p
 	}
-	dir := p.GetDirection()
-	dir2 := p2.GetDirection()
 	// Wait for input events and process
 	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
@@ -51,51 +49,53 @@ func handleInput(g *Game) {
 		// Handle player direction. Can use WSAD or Arrow keys
 		// for 1 player. 2 player splits these up with WSAD for
 		// player1 and Arrow keys for player2
-		if ev.Key() == tcell.KeyUp || ev.Rune() == 'w' {
-			// Prevent player from turning into themselves
-			if !(dir2 == DirDown) {
-				p.SetDirection(DirUp)
-			}
-		}
 		if ev.Key() == tcell.KeyUp {
 			// Prevent player from turning into themselves
-			if !(dir2 == DirDown) {
-				p2.SetDirection(DirUp)
+			dir := p2.GetDirection()
+			if !(dir == entity.DirDown) {
+				p2.SetDirection(entity.DirUp)
 			}
 		}
 		if ev.Key() == tcell.KeyDown {
-			if !(dir2 == DirUp) {
-				p2.SetDirection(DirDown)
+			dir := p2.GetDirection()
+			if !(dir == entity.DirUp) {
+				p2.SetDirection(entity.DirDown)
 			}
 		}
 		if ev.Key() == tcell.KeyLeft {
-			if !(dir2 == DirRight) {
-				p2.SetDirection(DirLeft)
+			dir := p2.GetDirection()
+			if !(dir == entity.DirRight) {
+				p2.SetDirection(entity.DirLeft)
 			}
 		}
 		if ev.Key() == tcell.KeyRight {
-			//if !(dir == DirLeft) {
-			p2.SetDirection(DirRight)
-			//}
+			dir := p2.GetDirection()
+			if !(dir == entity.DirLeft) {
+				p2.SetDirection(entity.DirRight)
+			}
 		}
 		if ev.Rune() == 'w' {
-			if !(dir == DirDown) {
-				p.SetDirection(DirUp)
+			dir := p.GetDirection()
+			if !(dir == entity.DirDown) {
+				p.SetDirection(entity.DirUp)
 			}
 		}
 		if ev.Rune() == 's' {
-			if !(dir == DirUp) {
-				p.SetDirection(DirDown)
+			dir := p.GetDirection()
+			if !(dir == entity.DirUp) {
+				p.SetDirection(entity.DirDown)
 			}
 		}
 		if ev.Rune() == 'a' {
-			if !(dir == DirRight) {
-				p.SetDirection(DirLeft)
+			dir := p.GetDirection()
+			if !(dir == entity.DirRight) {
+				p.SetDirection(entity.DirLeft)
 			}
 		}
 		if ev.Rune() == 'd' {
-			if !(dir == DirLeft) {
-				p.SetDirection(DirRight)
+			dir := p.GetDirection()
+			if !(dir == entity.DirLeft) {
+				p.SetDirection(entity.DirRight)
 			}
 		}
 		if ev.Rune() == 'f' {

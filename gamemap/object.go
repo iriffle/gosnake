@@ -52,10 +52,10 @@ func (o *Object) MoveLastPos(dx, dy int) {
 }
 
 func (o *Object) SetPos(x, y int) {
+	o.ox = o.x
+	o.oy = o.y
 	o.x = x
 	o.y = y
-	o.ox = x
-	o.oy = y
 }
 
 func (o *Object) GetChar() rune {

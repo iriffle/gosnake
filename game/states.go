@@ -21,15 +21,6 @@ const (
 	MenuSettings
 )
 
-// Direction
-const (
-	DirUp = iota
-	DirDown
-	DirLeft
-	DirRight
-	DirAll
-)
-
 // Game modes
 const (
 	Player1 = iota

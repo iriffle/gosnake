@@ -30,8 +30,8 @@ func InitLevel3(g *Game) {
 
 func InitLevel4(g *Game) {
 	makeWallChan(g, 2)
-	go movingWall(g, 1+15, g.gameMap.Height/4, DirLeft, 2, 15, WallRune, g.DefStyle, g.gameMap.WallChan[0])
-	go movingWall(g, g.gameMap.Width-15, (g.gameMap.Height - g.gameMap.Height/4), DirRight, 2, 15, WallRune, g.DefStyle, g.gameMap.WallChan[1])
+	go movingWall(g, 1+15, g.gameMap.Height/4, entity.DirLeft, 2, 15, WallRune, g.DefStyle, g.gameMap.WallChan[0])
+	go movingWall(g, g.gameMap.Width-15, (g.gameMap.Height - g.gameMap.Height/4), entity.DirRight, 2, 15, WallRune, g.DefStyle, g.gameMap.WallChan[1])
 }
 
 func InitLevel5(g *Game) {
@@ -43,10 +43,10 @@ func InitLevel5(g *Game) {
 func InitLevel6(g *Game) {
 	g.gameMap.BiteChan[0] <- true
 	makeWallChan(g, 4)
-	go movingWall(g, g.gameMap.Width/4, 6, DirUp, 1, 7, WallRune, g.DefStyle, g.gameMap.WallChan[2])
-	go movingWall(g, (g.gameMap.Width/4 + 1), 6, DirUp, 1, 7, WallRune, g.DefStyle, g.gameMap.WallChan[3])
-	go movingWall(g, (g.gameMap.Width - g.gameMap.Width/4), g.gameMap.Height-6, DirDown, 1, 7, WallRune, g.DefStyle, g.gameMap.WallChan[4])
-	go movingWall(g, ((g.gameMap.Width - g.gameMap.Width/4) - 1), g.gameMap.Height-6, DirDown, 1, 7, WallRune, g.DefStyle, g.gameMap.WallChan[5])
+	go movingWall(g, g.gameMap.Width/4, 6, entity.DirUp, 1, 7, WallRune, g.DefStyle, g.gameMap.WallChan[2])
+	go movingWall(g, (g.gameMap.Width/4 + 1), 6, entity.DirUp, 1, 7, WallRune, g.DefStyle, g.gameMap.WallChan[3])
+	go movingWall(g, (g.gameMap.Width - g.gameMap.Width/4), g.gameMap.Height-6, entity.DirDown, 1, 7, WallRune, g.DefStyle, g.gameMap.WallChan[4])
+	go movingWall(g, ((g.gameMap.Width - g.gameMap.Width/4) - 1), g.gameMap.Height-6, entity.DirDown, 1, 7, WallRune, g.DefStyle, g.gameMap.WallChan[5])
 }
 
 func InitLevel7(g *Game) {
@@ -131,14 +131,14 @@ func movingWall(g *Game, x, y, direction, speed, segments int, char rune, style 
 				e.NewPos(newPos)
 				dir := e.GetDirection()
 				switch dir {
-				case DirUp:
-					e.SetDirection(DirDown)
-				case DirDown:
-					e.SetDirection(DirUp)
-				case DirLeft:
-					e.SetDirection(DirRight)
-				case DirRight:
-					e.SetDirection(DirLeft)
+				case entity.DirUp:
+					e.SetDirection(entity.DirDown)
+				case entity.DirDown:
+					e.SetDirection(entity.DirUp)
+				case entity.DirLeft:
+					e.SetDirection(entity.DirRight)
+				case entity.DirRight:
+					e.SetDirection(entity.DirLeft)
 				}
 			} else {
 				e.Move(dx, dy)
