@@ -14,6 +14,7 @@ const (
 	BitStatic = iota
 	BitMoving
 	BitRandom
+	Bite
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 	DirLeft
 	DirRight
 	DirAll
+	DirNone
 )
 
 // Bit struct
@@ -29,11 +31,7 @@ type Bit struct {
 	*gamemap.Object
 	points int
 	state  int
-}
-
-type Bite struct {
-	*Bit
-	dir int
+	dir    int
 }
 
 type Bits interface {
@@ -41,12 +39,13 @@ type Bits interface {
 }
 
 // Create new Bit
-func NewBit(x, y, points int, char rune, state int, style tcell.Style) *Bit {
+func NewBit(x, y, points int, char rune, state, dir int, style tcell.Style) *Bit {
 	o := gamemap.NewObject(x, y, char, style, false)
 	b := Bit{
 		o,
 		points,
 		state,
+		dir,
 	}
 	return &b
 }
@@ -55,7 +54,7 @@ func NewBit(x, y, points int, char rune, state int, style tcell.Style) *Bit {
 func NewBitLineH(bits []*Bit, x, y, points, numBits int, char rune, style tcell.Style) []*Bit {
 	for i := 0; i < numBits; i++ {
 		x += 2
-		b := NewBit(x, y, points, char, 0, style)
+		b := NewBit(x, y, points, char, 0, DirNone, style)
 		bits = append(bits, b)
 	}
 	return bits
@@ -65,7 +64,7 @@ func NewBitLineH(bits []*Bit, x, y, points, numBits int, char rune, style tcell.
 func NewBitLineV(bits []*Bit, x, y, points, numBits int, char rune, style tcell.Style) []*Bit {
 	for i := 0; i < numBits; i++ {
 		y++
-		b := NewBit(x, y, points, char, 0, style)
+		b := NewBit(x, y, points, char, 0, DirNone, style)
 		bits = append(bits, b)
 	}
 	return bits
@@ -78,7 +77,7 @@ func NewRandomBit(m *gamemap.GameMap, points int, char rune, style tcell.Style) 
 		randX := rand.Intn(m.Width)
 		randY := rand.Intn(m.Height)
 		if randX < m.Width-1 && randX > 1 && randY < m.Height-1 && randY > 1 {
-			b = NewBit(randX, randY, points, char, 2, style)
+			b = NewBit(randX, randY, points, char, 2, DirNone, style)
 			break
 		}
 	}
@@ -134,20 +133,10 @@ func (b *Bit) MoveRandom(m *gamemap.GameMap) {
 	}
 }
 
-// NewBite creates a new Bite object.
-func NewBite(m *gamemap.GameMap, x, y, points, dir, state int, char rune, style tcell.Style) *Bite {
-	bit := NewBit(x, y, points, char, state, style)
-	bite := Bite{
-		bit,
-		dir,
-	}
-	return &bite
-}
-
 // NewRandomBite generates random coordinates and random explosion directions for a new Bite.
-func NewRandomBite(m *gamemap.GameMap, runes []rune, style tcell.Style, random bool) *Bite {
+func NewRandomBite(m *gamemap.GameMap, runes []rune, style tcell.Style, random bool) *Bit {
 	var (
-		bite *Bite
+		bite *Bit
 		dir  int
 		char rune
 	)
@@ -179,7 +168,7 @@ func NewRandomBite(m *gamemap.GameMap, runes []rune, style tcell.Style, random b
 		randX := rand.Intn(m.Width)
 		randY := rand.Intn(m.Height)
 		if randX < m.Width-1 && randX > 1 && randY < m.Height-1 && randY > 1 {
-			bite = NewBite(m, randX, randY, 50, dir, BitStatic, char, style)
+			bite = NewBit(randX, randY, 50, char, BitStatic, dir, style)
 			break
 		}
 	}
@@ -188,7 +177,7 @@ func NewRandomBite(m *gamemap.GameMap, runes []rune, style tcell.Style, random b
 }
 
 // ExplodeBite triggers a bite explosion based on bite direction type.
-func (b *Bite) ExplodeBite(m, biteMap *gamemap.GameMap, biteExplodeRune rune, explodedStyle, defStyle tcell.Style) {
+func (b *Bit) ExplodeBite(m, biteMap *gamemap.GameMap, biteExplodeRune rune, explodedStyle, defStyle tcell.Style) {
 	b.SetStyle(explodedStyle)
 	time.Sleep(500 * time.Millisecond)
 	b.ExplodeDir(biteMap, m, biteExplodeRune, explodedStyle, true, (30 * time.Millisecond))
@@ -196,7 +185,7 @@ func (b *Bite) ExplodeBite(m, biteMap *gamemap.GameMap, biteExplodeRune rune, ex
 	b.ExplodeDir(biteMap, m, ' ', defStyle, false, 0)
 }
 
-func (b *Bite) ExplodeDir(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
+func (b *Bit) ExplodeDir(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
 	if b.dir == DirUp || b.dir == DirAll {
 		go b.SetUp(biteMap, m, char, style, blocked, t)
 	}
@@ -212,7 +201,7 @@ func (b *Bite) ExplodeDir(biteMap, m *gamemap.GameMap, char rune, style tcell.St
 }
 
 // SetRight sets or clears an explosion to the right.
-func (b *Bite) SetRight(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
+func (b *Bit) SetRight(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
 	bx, by := b.GetCurPos()
 	for x := bx + 1; x < m.Width-1; x++ {
 		time.Sleep(t)
@@ -221,7 +210,7 @@ func (b *Bite) SetRight(biteMap, m *gamemap.GameMap, char rune, style tcell.Styl
 }
 
 // SetLeft sets or clears an explosion to the left.
-func (b *Bite) SetLeft(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
+func (b *Bit) SetLeft(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
 	bx, by := b.GetCurPos()
 	for x := bx - 1; x > 1; x-- {
 		time.Sleep(t)
@@ -230,7 +219,7 @@ func (b *Bite) SetLeft(biteMap, m *gamemap.GameMap, char rune, style tcell.Style
 }
 
 // SetDown sets or clears an explosion down.
-func (b *Bite) SetDown(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
+func (b *Bit) SetDown(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
 	bx, by := b.GetCurPos()
 	for y := by + 1; y < m.Height-1; y++ {
 		time.Sleep(t)
@@ -239,7 +228,7 @@ func (b *Bite) SetDown(biteMap, m *gamemap.GameMap, char rune, style tcell.Style
 }
 
 // SetUp sets or clears and explosion up.
-func (b *Bite) SetUp(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
+func (b *Bit) SetUp(biteMap, m *gamemap.GameMap, char rune, style tcell.Style, blocked bool, t time.Duration) {
 	bx, by := b.GetCurPos()
 	for y := by - 1; y > 0; y-- {
 		time.Sleep(t)

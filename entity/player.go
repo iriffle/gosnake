@@ -69,7 +69,7 @@ func (p *Player) CheckBitPos(bits []*Bit) int {
 
 // Check the position of bites in relation to the player
 // and see if there is a match
-func (p *Player) CheckBitePos(bites []*Bite) int {
+func (p *Player) CheckBitePos(bites []*Bit) int {
 	px, py := p.pos[0].GetCurPos()
 	for i := range bites {
 		bx, by := bites[i].GetCurPos()
@@ -149,7 +149,7 @@ func (p *Player) IsBlockedByEntity(entities []*Entity, players []*Player, dx, dy
 func (p *Player) DropBits(bits []*Bit, char rune, random int, sty tcell.Style) []*Bit {
 	for i := range p.pos {
 		ox, oy := p.pos[i].GetLastPos()
-		b := NewBit(ox, oy, 10, char, random, sty)
+		b := NewBit(ox, oy, 10, char, random, DirNone, sty)
 		bits = append(bits, b)
 	}
 	return bits

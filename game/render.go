@@ -30,7 +30,7 @@ func renderAll(g *Game, style tcell.Style, m *gamemap.GameMap) {
 	}
 	renderScore(g.gview, g.players, m.Width, m.Height, g.SelStyle)
 	renderBits(g.gview, g.bits)
-	renderBites(g.gview, g.bites)
+	renderBits(g.gview, g.bites)
 	renderItems(g.gview, g.items)
 	renderEntities(g.gview, g.entities)
 	renderPlayers(g.gview, g.players)
@@ -171,16 +171,6 @@ func renderBits(v *views.ViewPort, bits []*entity.Bit) {
 		x, y := bits[i].GetCurPos()
 		char := bits[i].GetChar()
 		sty := bits[i].GetStyle()
-		renderRune(v, x, y, sty, char)
-	}
-}
-
-// Render all Bites
-func renderBites(v *views.ViewPort, bites []*entity.Bite) {
-	for i := range bites {
-		x, y := bites[i].GetCurPos()
-		char := bites[i].GetChar()
-		sty := bites[i].GetStyle()
 		renderRune(v, x, y, sty, char)
 	}
 }

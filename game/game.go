@@ -73,7 +73,7 @@ type Game struct {
 	// Game structs
 	players  []*entity.Player // All players in game
 	entities []*entity.Entity // All entities currently in game
-	bites    []*entity.Bite   // All bites currently  in game (triangles)
+	bites    []*entity.Bit    // All bites currently  in game (triangles)
 	bits     []*entity.Bit    // All bits currently in game (square dots)
 	items    []*entity.Item
 	gameMap  *gamemap.GameMap // Game map
@@ -407,9 +407,9 @@ func (g *Game) Run() error {
 		for i := range g.players {
 			select {
 			case bitPos := <-g.players[i].BitChan:
-				g.removeBit(bitPos)
+				g.bits = removeBit(g.bits, bitPos)
 			case bitePos := <-g.players[i].BiteChan:
-				g.removeBite(bitePos)
+				g.bites = removeBit(g.bites, bitePos)
 			default:
 				continue
 			}
@@ -575,7 +575,6 @@ func (g *Game) handleLevel(m *gamemap.GameMap) {
 	for _, p := range g.players {
 		score := p.GetScore()
 		name := p.GetName()
-		// Level 2
 		if score >= Level2 {
 			if g.level < 2 {
 				InitLevel2(g)
@@ -583,7 +582,6 @@ func (g *Game) handleLevel(m *gamemap.GameMap) {
 				logger.Info(name + " reached level 2!")
 			}
 		}
-		// Level 3
 		if score >= Level3 {
 			if g.level < 3 {
 				InitLevel3(g)
@@ -591,7 +589,6 @@ func (g *Game) handleLevel(m *gamemap.GameMap) {
 				logger.Info(name + " reached level 3!")
 			}
 		}
-		// Level 4
 		if score >= Level4 {
 			if g.level < 4 {
 				InitLevel4(g)
@@ -599,7 +596,6 @@ func (g *Game) handleLevel(m *gamemap.GameMap) {
 				logger.Info(name + " reached level 4!")
 			}
 		}
-		// Level 5
 		if score >= Level5 {
 			if g.level < 5 {
 				InitLevel5(g)
@@ -607,7 +603,6 @@ func (g *Game) handleLevel(m *gamemap.GameMap) {
 				logger.Info(name + " reached level 5!")
 			}
 		}
-		// Level 6
 		if score >= Level6 {
 			if g.level < 6 {
 				InitLevel6(g)
@@ -670,7 +665,7 @@ func (g *Game) moveInterval(speed, direction int) time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
-// Check if player is on top of a bit
+// IsOnBit checks if player is on top of a bit
 func (g *Game) IsOnBit(p *entity.Player) int {
 	i := p.CheckBitPos(g.bits)
 	if i != -1 {
@@ -707,22 +702,6 @@ func (g *Game) IsOnItem(p *entity.Player) {
 	}
 }
 
-// removeBit removes a particular bit from the game's bit slice in order to remove
-// that bit from the game.
-func (g *Game) removeBit(i int) {
-	g.bits[i] = g.bits[len(g.bits)-1]
-	g.bits[len(g.bits)-1] = nil
-	g.bits = g.bits[:len(g.bits)-1]
-}
-
-// removeBit removes a particular bit from the game's bit slice in order to remove
-// that bit from the game.
-func (g *Game) removeBite(i int) {
-	g.bites[i] = g.bites[len(g.bites)-1]
-	g.bites[len(g.bites)-1] = nil
-	g.bites = g.bites[:len(g.bites)-1]
-}
-
 func (g *Game) removeItem(i int) {
 	g.items[i] = g.items[len(g.items)-1]
 	g.items[len(g.items)-1] = nil
@@ -747,6 +726,13 @@ func (g *Game) GetNumPlayers() int {
 
 func (g *Game) GetCurProfiles() []*Profile {
 	return g.curProfiles
+}
+
+func removeBit(bits []*entity.Bit, i int) []*entity.Bit {
+	bits[i] = bits[len(bits)-1]
+	bits[len(bits)-1] = nil
+	bits = bits[:len(bits)-1]
+	return bits
 }
 
 func getCharList(list []rune) []string {
