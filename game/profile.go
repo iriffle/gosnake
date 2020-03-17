@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"encoding/json"
@@ -7,6 +7,9 @@ import (
 
 	"github.com/gdamore/tcell"
 	"github.com/google/logger"
+	"github.com/stjiub/gosnake/entity"
+	"github.com/stjiub/gosnake/gamemap"
+	"github.com/stjiub/gosnake/style"
 )
 
 type Profile struct {
@@ -36,17 +39,17 @@ func NewProfile(name string, fgColor, bgColor string, char rune) *Profile {
 func (p *Profile) GetStyle() tcell.Style {
 	fgColor := tcell.GetColor(p.FGColor)
 	bgColor := tcell.GetColor(p.BGColor)
-	style := GetStyle(bgColor, fgColor)
-	return style
+	sty := style.GetStyle(bgColor, fgColor)
+	return sty
 }
 
 // AssignToPlayer assigns the current profile color to a player.
-func (p *Profile) AssignToPlayer(player *Player) {
-	player.name = p.Name
+func (p *Profile) AssignToPlayer(player *entity.Player) {
+	player.SetName(p.Name)
 	fgColor := tcell.GetColor(p.FGColor)
 	bgColor := tcell.GetColor(p.BGColor)
-	style := GetStyle(bgColor, fgColor)
-	player.style = style
+	sty := style.GetStyle(bgColor, fgColor)
+	player.SetStyle(sty)
 }
 
 // DecodeProfiles takes a JSON byte slice and converts it into
@@ -130,21 +133,21 @@ func (p *Profile) Edit(g *Game, chars, colors []string) int {
 	h := (MapHeight / 2) - 8
 
 	// Create color entity to display color selection bar
-	eColor := NewColorEntity(w-2, h+2, BitRune, g.DefStyle)
+	eColor := entity.NewColorEntity(w-2, h+2, BitRune, PlayerColors, g.DefStyle)
 
 	// Create display entities for each rotation to show current selected attributes on
-	style := StringToStyle(p.FGColor, p.BGColor)
-	eDisplayH := NewDisplayEntity(w+12, h+8, 20, 1, 0, p.Char, style)
-	eDisplayV := NewDisplayEntity(w+l, h+2, 11, 0, 1, p.Char, style)
-	eDisplayDL := NewDisplayEntity(w+l-6, h+2, 11, 1, 1, p.Char, style)
-	eDisplayDR := NewDisplayEntity(w+l-5, h+13, 11, 1, -1, p.Char, style)
+	sty := style.StringToStyle(p.FGColor, p.BGColor)
+	eDisplayH := entity.NewDisplayEntity(w+12, h+8, 20, 1, 0, p.Char, sty)
+	eDisplayV := entity.NewDisplayEntity(w+l, h+2, 11, 0, 1, p.Char, sty)
+	eDisplayDL := entity.NewDisplayEntity(w+l-6, h+2, 11, 1, 1, p.Char, sty)
+	eDisplayDR := entity.NewDisplayEntity(w+l-5, h+13, 11, 1, -1, p.Char, sty)
 
 	// Create dots to show what attributes are currently selected
-	oChar := NewObject(w, h-1, BitRune, g.SelStyle, false)
-	oColor := NewObject(w-4, h+2, BitRune, g.SelStyle, false)
+	oChar := gamemap.NewObject(w, h-1, BitRune, g.SelStyle, false)
+	oColor := gamemap.NewObject(w-4, h+2, BitRune, g.SelStyle, false)
 
-	entities := []*Entity{eDisplayH, eDisplayDL, eDisplayV, eDisplayDR}
-	objects := []*Object{oColor, oChar}
+	entities := []*entity.Entity{eDisplayH, eDisplayDL, eDisplayV, eDisplayDR}
+	objects := []*gamemap.Object{oColor, oChar}
 	cColors := []string{PlayerColors[0], PlayerColors[1]}
 
 	rotation := Horizontal

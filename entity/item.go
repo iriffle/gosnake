@@ -1,8 +1,15 @@
-package main
+package entity
 
 import (
-	"github.com/gdamore/tcell"
 	"time"
+
+	"github.com/gdamore/tcell"
+	"github.com/stjiub/gosnake/gamemap"
+)
+
+// Player item states
+const (
+	WallPass = iota
 )
 
 type Item struct {
@@ -11,7 +18,7 @@ type Item struct {
 	pos       int
 	duration  time.Duration
 	ch        chan bool
-	Object
+	gamemap.Object
 }
 
 func NewItem(x, y, effect int, duration time.Duration, char rune, style tcell.Style) *Item {
@@ -20,13 +27,10 @@ func NewItem(x, y, effect int, duration time.Duration, char rune, style tcell.St
 		activated: false,
 		duration:  duration,
 	}
-	i.x = x
-	i.y = y
-	i.ox = x
-	i.oy = y
-	i.char = char
-	i.style = style
-	i.blocked = false
+	i.SetPos(x, y)
+	i.SetChar(char)
+	i.SetStyle(style)
+	i.Unblock()
 
 	return &i
 }

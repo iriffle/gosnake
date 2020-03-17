@@ -1,4 +1,4 @@
-package main
+package game
 
 // Game states
 const (
@@ -19,15 +19,6 @@ const (
 	MenuEdit
 	MenuRemove
 	MenuSettings
-)
-
-// Direction
-const (
-	DirUp = iota
-	DirDown
-	DirLeft
-	DirRight
-	DirAll
 )
 
 // Game modes
@@ -61,6 +52,14 @@ const (
 	DiagLeft
 	Vertical
 	DiagRight
+)
+
+const (
+
+	// Bit states
+	BitStatic = iota
+	BitMoving
+	BitRandom
 )
 
 // Player item states

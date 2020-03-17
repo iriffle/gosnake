@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"os"
@@ -10,6 +10,9 @@ import (
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/encoding"
 	"github.com/gdamore/tcell/views"
+	"github.com/stjiub/gosnake/entity"
+	"github.com/stjiub/gosnake/gamemap"
+	"github.com/stjiub/gosnake/style"
 )
 
 const (
@@ -43,7 +46,7 @@ const (
 
 var (
 	// Current game map
-	m *GameMap
+	m *gamemap.GameMap
 
 	// Number of random bits that should be present on map at a time
 	numBits int = 5
@@ -55,6 +58,7 @@ var (
 	gameModeOptions        = []string{"Basic", "Advanced", "Battle"}
 	PlayerRunes            = []rune{'█', '■', '◆', '࿖', 'ᚙ', '▚', 'ↀ', 'ↈ', 'ʘ', '֍', '߷', '⁂', 'O', 'o', '=', '#', '$', '+', '-', '!', '('}
 	PlayerColors           = []string{"white", "black", "silver", "green", "lime", "blue", "navy", "aqua", "teal", "red", "purple", "fuschia"}
+	BiteRunes              = []rune{BiteUpRune, BiteDownRune, BiteLeftRune, BiteRightRune, BiteAllRune, BiteExplodeRune}
 )
 
 // Game is the main game struct and is used to store and compute general game logic.
@@ -67,13 +71,13 @@ type Game struct {
 	sbar   *views.TextBar  // Controls text bar
 
 	// Game structs
-	players  []*Player // All players in game
-	entities []*Entity // All entities currently in game
-	bites    []*Bite   // All bites currently  in game (triangles)
-	bits     []*Bit    // All bits currently in game (square dots)
-	items    []*Item
-	gameMap  *GameMap // Game map
-	biteMap  *GameMap // Bite map
+	players  []*entity.Player // All players in game
+	entities []*entity.Entity // All entities currently in game
+	bites    []*entity.Bit    // All bites currently  in game (triangles)
+	bits     []*entity.Bit    // All bits currently in game (square dots)
+	items    []*entity.Item
+	gameMap  *gamemap.GameMap // Game map
+	biteMap  *gamemap.GameMap // Bite map
 
 	// Score and profile tracking
 	scores1     []*Score   // 1 player scores
@@ -92,7 +96,18 @@ type Game struct {
 	frames     int       // Used to track game FPS
 	bitQuit    chan bool // Used to close handlebits goroutine
 
-	Style
+	style.Style
+}
+
+func NewGame(numPlayers int, curProfiles []*Profile, scoreFile, proFile string) *Game {
+	g := Game{
+		numPlayers:  numPlayers,
+		curProfiles: curProfiles,
+		scoreFile:   scoreFile,
+		proFile:     proFile,
+	}
+
+	return &g
 }
 
 // InitScreen initializes the tcell screen and sets views/bars and styles.
@@ -316,7 +331,7 @@ func (g *Game) InitMap() error {
 	g.level = 1
 
 	// Create a game map
-	m = &GameMap{
+	m = &gamemap.GameMap{
 		Width:  MapWidth,
 		Height: MapHeight,
 		X:      MapStartX,
@@ -325,10 +340,10 @@ func (g *Game) InitMap() error {
 	g.gameMap = m
 	m.InitMap()
 	m.InitMapBoundary(WallRune, FloorRune, g.DefStyle)
-	m.InitLevel1(g)
+	InitLevel1(g)
 	logger.Info("Created game map and set to level 1.")
 
-	biteMap := &GameMap{
+	biteMap := &gamemap.GameMap{
 		Width:  m.Width,
 		Height: m.Height,
 	}
@@ -354,12 +369,12 @@ func (g *Game) InitPlayers() error {
 		pChar := g.curProfiles[i].Char
 
 		// Create player and
-		p := NewPlayer(x, y, 0, (DirLeft - i), pChar, pName, pStyle)
+		p := entity.NewPlayer(x, y, 0, (entity.DirLeft - i), pChar, pName, pStyle)
 		g.players = append(g.players, p)
 	}
-	g.players[0].score = 0
+	g.players[0].SetScore(0)
 	for i := 0; i < numBits; i++ {
-		b := NewRandomBit(m, 10, BitRune, g.BitStyle)
+		b := entity.NewRandomBit(m, 10, BitRune, g.BitStyle)
 		g.bits = append(g.bits, b)
 	}
 	logger.Info("Initialized game with ", strconv.Itoa(g.numPlayers), " players.")
@@ -373,9 +388,7 @@ func (g *Game) Run() error {
 	// Run a goroutine for each player to handle their own loop
 	// separately from each other and the main game loop
 	for _, p := range g.players {
-		p.quitChan = make(chan bool)
-		p.bitChan = make(chan int, 1)
-		p.biteChan = make(chan int, 1)
+		p.InitChans()
 		go g.handlePlayer(p)
 	}
 
@@ -393,10 +406,10 @@ func (g *Game) Run() error {
 
 		for i := range g.players {
 			select {
-			case bitPos := <-g.players[i].bitChan:
-				g.removeBit(bitPos)
-			case bitePos := <-g.players[i].biteChan:
-				g.removeBite(bitePos)
+			case bitPos := <-g.players[i].BitChan:
+				g.bits = removeBit(g.bits, bitPos)
+			case bitePos := <-g.players[i].BiteChan:
+				g.bites = removeBit(g.bites, bitePos)
 			default:
 				continue
 			}
@@ -412,7 +425,7 @@ func (g *Game) Run() error {
 
 	// If game ends then kill the handlePlayer goroutines
 	for _, p := range g.players {
-		p.quitChan <- true
+		p.QuitChan <- true
 	}
 
 	return nil
@@ -459,7 +472,7 @@ func (g *Game) handleMenu(options []string) int {
 
 // handlePlayer is the player loop and handles a player's
 // state and  interaction with objects and the game map.
-func (g *Game) handlePlayer(p *Player) {
+func (g *Game) handlePlayer(p *entity.Player) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Errorf("Error in handlePlayer goroutine: %v", r)
@@ -472,14 +485,16 @@ func (g *Game) handlePlayer(p *Player) {
 			scoreChange := false
 
 			// Check which direction player should be moving
-			dx, dy := p.CheckDirection(g)
+			dx, dy := p.CheckDirection()
 
 			// Check if player is blocked at all
 			if p.IsBlocked(m, g.biteMap, g.entities, g.players, dx, dy) {
+				name := p.GetName()
+				score := p.GetScore()
 				// Read high scores from file, compare against current scores
 				// and make changes if necessary
 				g.getScores()
-				g.scores2, scoreChange = UpdateScores(g.scores2, p.name, p.score, g.mode, MaxHighScores)
+				g.scores2, scoreChange = UpdateScores(g.scores2, name, score, g.mode, MaxHighScores)
 				if scoreChange {
 					WriteScores(g.scores1, g.scores2, g.scoreFile)
 				}
@@ -488,18 +503,14 @@ func (g *Game) handlePlayer(p *Player) {
 				if g.numPlayers == 1 {
 					// Kill player
 					p.Kill(g.BiteExplodedStyle)
-					logger.Infof("Player died: %v", p.name)
+					logger.Infof("Player died: %v", name)
 					// Wait a short period of time then restart the game
 					time.Sleep(100 * time.Millisecond)
 					g.Restart()
 				} else {
-					// Generate bits where player's body was during collision
-					for _, i := range p.pos {
-						b := NewBit(i.ox, i.oy, 10, BitRune, BitRandom, g.BitStyle)
-						g.bits = append(g.bits, b)
-					}
+					g.bits = p.DropBits(g.bits, BitRune, BitRandom, g.DefStyle)
 					p.Reset(MapWidth/2, MapHeight/2, 3, g.BiteExplodedStyle)
-					logger.Infof("Player died: %v", p.name)
+					logger.Infof("Player died: %v", name)
 				}
 
 			} else {
@@ -507,15 +518,15 @@ func (g *Game) handlePlayer(p *Player) {
 				p.Move(dx, dy)
 			}
 			// Check if player is on a bit or bite
-			bitPos := p.IsOnBit(g)
+			bitPos := g.IsOnBit(p)
 			if bitPos != -1 {
-				p.bitChan <- bitPos
+				p.BitChan <- bitPos
 			}
-			bitePos := p.IsOnBite(g, m)
+			bitePos := g.IsOnBite(p, m)
 			if bitePos != -1 {
-				p.biteChan <- bitePos
+				p.BiteChan <- bitePos
 			}
-			p.IsOnItem(g)
+			g.IsOnItem(p)
 
 			// Calculate player's speed based on their score.
 			// Movement is done by causing the player goroutine
@@ -524,14 +535,14 @@ func (g *Game) handlePlayer(p *Player) {
 			time.Sleep(g.moveInterval(0, p.GetDirection()))
 
 		// Quit goroutine if signaled
-		case <-p.quitChan:
+		case <-p.QuitChan:
 			return
 		}
 	}
 }
 
 // handleBits causes bits on map to move in a random direction in timed intervals.
-func (g *Game) moveBits(m *GameMap) {
+func (g *Game) moveBits(m *gamemap.GameMap) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Errorf("Error in handleBits goroutine: %v", r)
@@ -542,9 +553,10 @@ func (g *Game) moveBits(m *GameMap) {
 		default:
 			// Move bits in a random direction after a set amount of time
 			for i := range g.bits {
-				switch g.bits[i].state {
+				state := g.bits[i].GetState()
+				switch state {
 				case BitRandom:
-					g.bits[i].Move(m)
+					g.bits[i].MoveRandom(m)
 				}
 			}
 			// Wait a set amount of time
@@ -559,46 +571,43 @@ func (g *Game) moveBits(m *GameMap) {
 
 // handleLevel checks the current score against the current level and
 // changes the level if a certain score is reached.
-func (g *Game) handleLevel(m *GameMap) {
+func (g *Game) handleLevel(m *gamemap.GameMap) {
 	for _, p := range g.players {
-		// Level 2
-		if p.score >= Level2 {
+		score := p.GetScore()
+		name := p.GetName()
+		if score >= Level2 {
 			if g.level < 2 {
-				m.InitLevel2(g)
+				InitLevel2(g)
 				g.level = 2
-				logger.Info(p.name + " reached level 2!")
+				logger.Info(name + " reached level 2!")
 			}
 		}
-		// Level 3
-		if p.score >= Level3 {
+		if score >= Level3 {
 			if g.level < 3 {
-				m.InitLevel3(g)
+				InitLevel3(g)
 				g.level = 3
-				logger.Info(p.name + " reached level 3!")
+				logger.Info(name + " reached level 3!")
 			}
 		}
-		// Level 4
-		if p.score >= Level4 {
+		if score >= Level4 {
 			if g.level < 4 {
-				m.InitLevel4(g)
+				InitLevel4(g)
 				g.level = 4
-				logger.Info(p.name + " reached level 4!")
+				logger.Info(name + " reached level 4!")
 			}
 		}
-		// Level 5
-		if p.score >= Level5 {
+		if score >= Level5 {
 			if g.level < 5 {
-				m.InitLevel5(g)
+				InitLevel5(g)
 				g.level = 5
-				logger.Info(p.name + " reached level 5!")
+				logger.Info(name + " reached level 5!")
 			}
 		}
-		// Level 6
-		if p.score >= Level6 {
+		if score >= Level6 {
 			if g.level < 6 {
-				m.InitLevel6(g)
+				InitLevel6(g)
 				g.level = 6
-				logger.Info(p.name + " reached level 6!")
+				logger.Info(name + " reached level 6!")
 			}
 		}
 	}
@@ -612,7 +621,7 @@ func (g *Game) handlePause() {
 	for g.state == Pause {
 		if !chQuit {
 			for _, p := range g.players {
-				p.quitChan <- true
+				p.QuitChan <- true
 				chQuit = true
 			}
 		}
@@ -649,27 +658,48 @@ func (g *Game) getFPS() {
 func (g *Game) moveInterval(speed, direction int) time.Duration {
 	ms := 80 //120
 	switch direction {
-	case DirUp, DirDown:
+	case entity.DirUp, entity.DirDown:
 		ms = 140 //180
 	}
 	//ms -= (speed / 100)
 	return time.Duration(ms) * time.Millisecond
 }
 
-// removeBit removes a particular bit from the game's bit slice in order to remove
-// that bit from the game.
-func (g *Game) removeBit(i int) {
-	g.bits[i] = g.bits[len(g.bits)-1]
-	g.bits[len(g.bits)-1] = nil
-	g.bits = g.bits[:len(g.bits)-1]
+// IsOnBit checks if player is on top of a bit
+func (g *Game) IsOnBit(p *entity.Player) int {
+	i := p.CheckBitPos(g.bits)
+	if i != -1 {
+		b := g.bits[i]
+		points := b.GetPoints()
+		char := p.GetChar(0)
+		style := p.GetStyle(0)
+		p.AddScore(points)
+		p.AddSegment(1, char, style)
+	}
+	return i
 }
 
-// removeBit removes a particular bit from the game's bit slice in order to remove
-// that bit from the game.
-func (g *Game) removeBite(i int) {
-	g.bites[i] = g.bites[len(g.bites)-1]
-	g.bites[len(g.bites)-1] = nil
-	g.bites = g.bites[:len(g.bites)-1]
+// Determine if player is on a bite and if so trigger explosion
+func (g *Game) IsOnBite(p *entity.Player, m *gamemap.GameMap) int {
+	i := p.CheckBitePos(g.bites)
+	if i != -1 {
+		b := g.bites[i]
+		char := p.GetChar(0)
+		style := p.GetStyle(0)
+		p.AddScore(50)
+		p.AddSegment(4, char, style)
+		go b.ExplodeBite(m, g.biteMap, BiteExplodeRune, g.BiteExplodedStyle, g.DefStyle)
+		return i
+	}
+	return -1
+}
+
+func (g *Game) IsOnItem(p *entity.Player) {
+	i := p.CheckItemPos(g.items)
+	if i != -1 {
+		p.AddItem(g.items[i])
+		g.removeItem(i)
+	}
 }
 
 func (g *Game) removeItem(i int) {
@@ -684,6 +714,25 @@ func (g *Game) getScores() {
 	byteData := ReadFile(g.scoreFile)
 	g.scores1, g.scores2 = DecodeScores(byteData)
 	logger.Infof("Loaded high scores from file: %v", g.scoreFile)
+}
+
+func (g *Game) GetState() int {
+	return g.state
+}
+
+func (g *Game) GetNumPlayers() int {
+	return g.numPlayers
+}
+
+func (g *Game) GetCurProfiles() []*Profile {
+	return g.curProfiles
+}
+
+func removeBit(bits []*entity.Bit, i int) []*entity.Bit {
+	bits[i] = bits[len(bits)-1]
+	bits[len(bits)-1] = nil
+	bits = bits[:len(bits)-1]
+	return bits
 }
 
 func getCharList(list []rune) []string {

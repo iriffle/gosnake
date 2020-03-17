@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"strconv"
@@ -7,10 +7,13 @@ import (
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/views"
 	"github.com/mattn/go-runewidth"
+	"github.com/stjiub/gosnake/entity"
+	"github.com/stjiub/gosnake/gamemap"
+	"github.com/stjiub/gosnake/style"
 )
 
 // Render all of the game in main game loop
-func renderAll(g *Game, style tcell.Style, m *GameMap) {
+func renderAll(g *Game, style tcell.Style, m *gamemap.GameMap) {
 
 	// Clear screen for redraw
 	g.gview.Clear()
@@ -27,7 +30,7 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 	}
 	renderScore(g.gview, g.players, m.Width, m.Height, g.SelStyle)
 	renderBits(g.gview, g.bits)
-	renderBites(g.gview, g.bites)
+	renderBits(g.gview, g.bites)
 	renderItems(g.gview, g.items)
 	renderEntities(g.gview, g.entities)
 	renderPlayers(g.gview, g.players)
@@ -37,10 +40,10 @@ func renderAll(g *Game, style tcell.Style, m *GameMap) {
 }
 
 // Render the game map
-func renderMap(v *views.ViewPort, m *GameMap) {
+func renderMap(v *views.ViewPort, m *gamemap.GameMap) {
 	for x := 0; x < m.Width; x++ {
 		for y := 0; y < m.Height; y++ {
-			renderRune(v, x, y, m.Objects[x][y].style, m.Objects[x][y].char)
+			renderRune(v, x, y, m.Objects[x][y].GetStyle(), m.Objects[x][y].GetChar())
 		}
 	}
 }
@@ -99,10 +102,10 @@ func renderHighScores(g *Game, mode, lastScorePos int) {
 }
 
 // Render the player scores in middle of screen
-func renderScore(v *views.ViewPort, players []*Player, w, h int, style tcell.Style) {
+func renderScore(v *views.ViewPort, players []*entity.Player, w, h int, style tcell.Style) {
 	scores := ""
 	for i := range players {
-		scores = players[i].name + ": " + strconv.Itoa(players[i].score) + " "
+		scores = players[i].GetName() + ": " + strconv.Itoa(players[i].GetScore()) + " "
 		renderCenterStr(v, w, h+i, style, scores)
 	}
 }
@@ -114,64 +117,70 @@ func renderLevel(v *views.ViewPort, l, w, h int, style tcell.Style) {
 }
 
 // Render a Player
-func renderPlayer(v *views.ViewPort, p *Player) {
-	for i := range p.pos {
+func renderPlayer(v *views.ViewPort, p *entity.Player) {
+	for i := 0; i < p.GetLength(); i++ {
 		var comb []rune
 		comb = nil
-		c := p.pos[i].char
-		v.SetContent(p.pos[i].x, p.pos[i].y, c, comb, p.pos[i].style)
+		c := p.GetChar(i)
+		x, y := p.GetCurPos(i)
+		sty := p.GetStyle(i)
+		v.SetContent(x, y, c, comb, sty)
 	}
 }
 
 // Render an Entity
-func renderEntity(v *views.ViewPort, e *Entity) {
-	for i := range e.pos {
+func renderEntity(v *views.ViewPort, e *entity.Entity) {
+	for i := 0; i < e.GetLength(); i++ {
 		var comb []rune
 		comb = nil
-		c := e.pos[i].char
-		v.SetContent(e.pos[i].x, e.pos[i].y, c, comb, e.pos[i].style)
+		c := e.GetChar(i)
+		x, y := e.GetCurPos(i)
+		sty := e.GetStyle(i)
+		v.SetContent(x, y, c, comb, sty)
 	}
 
 }
 
 // Render all Entities
-func renderEntities(v *views.ViewPort, entities []*Entity) {
+func renderEntities(v *views.ViewPort, entities []*entity.Entity) {
 	for i := range entities {
 		renderEntity(v, entities[i])
 	}
 }
 
 // Render all Players
-func renderPlayers(v *views.ViewPort, players []*Player) {
+func renderPlayers(v *views.ViewPort, players []*entity.Player) {
 	for i := range players {
 		renderPlayer(v, players[i])
 	}
 }
 
 // Render all objects
-func renderObjects(v *views.ViewPort, objects []*Object) {
+func renderObjects(v *views.ViewPort, objects []*gamemap.Object) {
 	for i := range objects {
-		renderRune(v, objects[i].x, objects[i].y, objects[i].style, objects[i].char)
+		x, y := objects[i].GetCurPos()
+		char := objects[i].GetChar()
+		sty := objects[i].GetStyle()
+		renderRune(v, x, y, sty, char)
 	}
 }
 
 // Render all Bits
-func renderBits(v *views.ViewPort, bits []*Bit) {
+func renderBits(v *views.ViewPort, bits []*entity.Bit) {
 	for i := range bits {
-		renderRune(v, bits[i].x, bits[i].y, bits[i].style, bits[i].char)
+		x, y := bits[i].GetCurPos()
+		char := bits[i].GetChar()
+		sty := bits[i].GetStyle()
+		renderRune(v, x, y, sty, char)
 	}
 }
 
-// Render all Bites
-func renderBites(v *views.ViewPort, bites []*Bite) {
-	for i := range bites {
-		renderRune(v, bites[i].x, bites[i].y, bites[i].style, bites[i].char)
-	}
-}
-
-func renderItems(v *views.ViewPort, items []*Item) {
+func renderItems(v *views.ViewPort, items []*entity.Item) {
 	for i := range items {
-		renderRune(v, items[i].x, items[i].y, items[i].style, items[i].char)
+		x, y := items[i].GetCurPos()
+		char := items[i].GetChar()
+		sty := items[i].GetStyle()
+		renderRune(v, x, y, sty, char)
 	}
 }
 
@@ -224,39 +233,39 @@ func renderRune(v *views.ViewPort, x, y int, style tcell.Style, char rune) {
 func renderGoLogo(g *Game, w, h int) {
 	w = w - 10
 	h = h - 12
-	style := GetStyle(g.DefBGColor, White)
-	renderStr(g.gview, w+6, h, style, "______")
-	renderStr(g.gview, w+5, h+1, style, "//   ) )")
-	renderStr(g.gview, w+4, h+2, style, "//         ___")
-	renderStr(g.gview, w+3, h+3, style, "//  ____  //   ) )")
-	renderStr(g.gview, w+2, h+4, style, "//    / / //   / /")
-	renderStr(g.gview, w+1, h+5, style, "((____/ / ((___/ /")
+	sty := style.GetStyle(g.DefBGColor, style.White)
+	renderStr(g.gview, w+6, h, sty, "______")
+	renderStr(g.gview, w+5, h+1, sty, "//   ) )")
+	renderStr(g.gview, w+4, h+2, sty, "//         ___")
+	renderStr(g.gview, w+3, h+3, sty, "//  ____  //   ) )")
+	renderStr(g.gview, w+2, h+4, sty, "//    / / //   / /")
+	renderStr(g.gview, w+1, h+5, sty, "((____/ / ((___/ /")
 	g.screen.Show()
 }
 
 func renderSnakeLogo(g *Game, w, h int) {
 	w = w - 33
 	h = h - 17
-	style := GetStyle(g.DefBGColor, Green)
-	redStyle := GetStyle(g.DefBGColor, Red)
-	renderStr(g.gview, w, h, style, "           /^\\/^\\")
-	renderStr(g.gview, w, h+1, style, "         _|__|  O|")
-	renderStr(g.gview, w+8, h+2, style, "/~     \\_/ \\")
-	renderStr(g.gview, w, h+2, redStyle, "\\/")
-	renderStr(g.gview, w+6, h+3, style, "|__________/  \\")
-	renderStr(g.gview, w, h+3, redStyle, " \\____")
-	renderStr(g.gview, w, h+4, style, "       \\_______      \\")
-	renderStr(g.gview, w, h+5, style, "                `\\     \\                   \\")
-	renderStr(g.gview, w, h+6, style, "                  |     |                   \\")
-	renderStr(g.gview, w, h+7, style, "                 /      /                    \\")
-	renderStr(g.gview, w, h+8, style, "                /     /                       \\\\")
-	renderStr(g.gview, w, h+9, style, "              /      /                         \\ \\")
-	renderStr(g.gview, w, h+10, style, "             /     /                            \\  \\")
-	renderStr(g.gview, w, h+11, style, "           /     /             _----_           \\   \\")
-	renderStr(g.gview, w, h+12, style, "          /     /           _-~      ~-_         |   |")
-	renderStr(g.gview, w, h+13, style, "         (      (        _-~    _--_    ~-_     _/   |")
-	renderStr(g.gview, w, h+14, style, "          \\      ~-____-~    _-~    ~-_    ~-_-~    /")
-	renderStr(g.gview, w, h+15, style, "            ~-_           _-~          ~-_       _-~")
-	renderStr(g.gview, w, h+16, style, "               ~--______-~                ~-___-~")
+	sty := style.GetStyle(g.DefBGColor, style.Green)
+	redSty := style.GetStyle(g.DefBGColor, style.Red)
+	renderStr(g.gview, w, h, sty, "           /^\\/^\\")
+	renderStr(g.gview, w, h+1, sty, "         _|__|  O|")
+	renderStr(g.gview, w+8, h+2, sty, "/~     \\_/ \\")
+	renderStr(g.gview, w, h+2, redSty, "\\/")
+	renderStr(g.gview, w+6, h+3, sty, "|__________/  \\")
+	renderStr(g.gview, w, h+3, redSty, " \\____")
+	renderStr(g.gview, w, h+4, sty, "       \\_______      \\")
+	renderStr(g.gview, w, h+5, sty, "                `\\     \\                   \\")
+	renderStr(g.gview, w, h+6, sty, "                  |     |                   \\")
+	renderStr(g.gview, w, h+7, sty, "                 /      /                    \\")
+	renderStr(g.gview, w, h+8, sty, "                /     /                       \\\\")
+	renderStr(g.gview, w, h+9, sty, "              /      /                         \\ \\")
+	renderStr(g.gview, w, h+10, sty, "             /     /                            \\  \\")
+	renderStr(g.gview, w, h+11, sty, "           /     /             _----_           \\   \\")
+	renderStr(g.gview, w, h+12, sty, "          /     /           _-~      ~-_         |   |")
+	renderStr(g.gview, w, h+13, sty, "         (      (        _-~    _--_    ~-_     _/   |")
+	renderStr(g.gview, w, h+14, sty, "          \\      ~-____-~    _-~    ~-_    ~-_-~    /")
+	renderStr(g.gview, w, h+15, sty, "            ~-_           _-~          ~-_       _-~")
+	renderStr(g.gview, w, h+16, sty, "               ~--______-~                ~-___-~")
 	g.screen.Show()
 }

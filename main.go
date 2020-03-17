@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
-	"github.com/google/logger"
 	"log"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/google/logger"
+	"github.com/stjiub/gosnake/game"
 )
 
 const (
@@ -19,9 +21,9 @@ var (
 	verbose = flag.Bool("verbose", false, "print info level logs to stdout")
 
 	// Keep track of previous game values
-	lastGameState  int = Play
+	lastGameState  int = game.Play
 	lastNumPlayers int
-	curProfiles    []*Profile
+	curProfiles    []*game.Profile
 )
 
 func main() {
@@ -45,7 +47,7 @@ func main() {
 	// Game loop
 	for {
 		// Create game
-		g := &Game{numPlayers: lastNumPlayers, curProfiles: curProfiles, scoreFile: scoreFile, proFile: proFile}
+		g := game.NewGame(lastNumPlayers, curProfiles, scoreFile, proFile)
 
 		// Initialize screen
 		err := g.InitScreen()
@@ -54,14 +56,14 @@ func main() {
 		}
 
 		// Open main menu
-		if lastGameState == Play || lastGameState == MainMenu {
+		if lastGameState == game.Play || lastGameState == game.MainMenu {
 			err := g.MainMenu()
 			if err != nil {
 				logger.Fatalf("Error running MainMenu: %v", err)
 			}
 		}
 
-		if g.state == Play {
+		if g.GetState() == game.Play {
 			// Setup a game
 			err := g.InitMap()
 			if err != nil {
@@ -80,13 +82,13 @@ func main() {
 		}
 
 		// Quit game if signaled
-		if g.state == Quit {
+		if g.GetState() == game.Quit {
 			g.Quit()
 		}
 
 		// Save game values
-		lastGameState = g.state
-		lastNumPlayers = g.numPlayers
-		curProfiles = g.curProfiles
+		lastGameState = g.GetState()
+		lastNumPlayers = g.GetNumPlayers()
+		curProfiles = g.GetCurProfiles()
 	}
 }

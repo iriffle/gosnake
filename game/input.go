@@ -1,25 +1,26 @@
-package main
+package game
 
 import (
 	"github.com/gdamore/tcell"
+	"github.com/stjiub/gosnake/entity"
+	"github.com/stjiub/gosnake/gamemap"
+	"github.com/stjiub/gosnake/style"
 )
 
 // Handle main game player input
 func handleInput(g *Game) {
 	// Make adjustments depending on if 1 or 2 player game
-	var p2 *Player
+	var p2 *entity.Player
 	p := g.players[0]
 	if len(g.players) > 1 {
 		p2 = g.players[1]
 	} else {
 		p2 = p
 	}
-
 	// Wait for input events and process
 	ev := g.screen.PollEvent()
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
-
 		// Quit game and return to Main Menu if Escape key pressed
 		if ev.Key() == tcell.KeyEscape {
 			g.Return()
@@ -45,53 +46,60 @@ func handleInput(g *Game) {
 				return
 			}
 		}
-
 		// Handle player direction. Can use WSAD or Arrow keys
 		// for 1 player. 2 player splits these up with WSAD for
 		// player1 and Arrow keys for player2
 		if ev.Key() == tcell.KeyUp {
 			// Prevent player from turning into themselves
-			if !(p2.direction == DirDown) {
-				p2.direction = DirUp
+			dir := p2.GetDirection()
+			if !(dir == entity.DirDown) {
+				p2.SetDirection(entity.DirUp)
 			}
 		}
 		if ev.Key() == tcell.KeyDown {
-			if !(p2.direction == DirUp) {
-				p2.direction = DirDown
+			dir := p2.GetDirection()
+			if !(dir == entity.DirUp) {
+				p2.SetDirection(entity.DirDown)
 			}
 		}
 		if ev.Key() == tcell.KeyLeft {
-			if !(p2.direction == DirRight) {
-				p2.direction = DirLeft
+			dir := p2.GetDirection()
+			if !(dir == entity.DirRight) {
+				p2.SetDirection(entity.DirLeft)
 			}
 		}
 		if ev.Key() == tcell.KeyRight {
-			if !(p2.direction == DirLeft) {
-				p2.direction = DirRight
+			dir := p2.GetDirection()
+			if !(dir == entity.DirLeft) {
+				p2.SetDirection(entity.DirRight)
 			}
 		}
 		if ev.Rune() == 'w' {
-			if !(p.direction == DirDown) {
-				p.direction = DirUp
+			dir := p.GetDirection()
+			if !(dir == entity.DirDown) {
+				p.SetDirection(entity.DirUp)
 			}
 		}
 		if ev.Rune() == 's' {
-			if !(p.direction == DirUp) {
-				p.direction = DirDown
+			dir := p.GetDirection()
+			if !(dir == entity.DirUp) {
+				p.SetDirection(entity.DirDown)
 			}
 		}
 		if ev.Rune() == 'a' {
-			if !(p.direction == DirRight) {
-				p.direction = DirLeft
+			dir := p.GetDirection()
+			if !(dir == entity.DirRight) {
+				p.SetDirection(entity.DirLeft)
 			}
 		}
 		if ev.Rune() == 'd' {
-			if !(p.direction == DirLeft) {
-				p.direction = DirRight
+			dir := p.GetDirection()
+			if !(dir == entity.DirLeft) {
+				p.SetDirection(entity.DirRight)
 			}
 		}
 		if ev.Rune() == 'f' {
-			p.items[0].Activate(p)
+			p.ActivateItem()
 		}
 	}
 }
@@ -155,9 +163,9 @@ func handleMenuInput(g *Game, m *Menu) int {
 }
 
 // Handle profile input
-func handleProfileInput(g *Game, entities []*Entity, oColor, oChar *Object, char, color *Menu, cColors []string, rotation int, fgMode bool) (int, int, []string) {
+func handleProfileInput(g *Game, entities []*entity.Entity, oColor, oChar *gamemap.Object, char, color *Menu, cColors []string, rotation int, fgMode bool) (int, int, []string) {
 	var s, cs int
-	var style tcell.Style
+	var sty tcell.Style
 	for i := range char.items {
 		if char.items[i].selected {
 			s = i
@@ -181,7 +189,7 @@ func handleProfileInput(g *Game, entities []*Entity, oColor, oChar *Object, char
 					entities[i].SetChar(PlayerRunes[char.GetSelected()])
 				}
 				char.ChangeSelected()
-				oChar.x -= 2
+				oChar.MoveCurPos(-2, 0)
 				return ItemNone, rotation, cColors
 			}
 		} else if ev.Key() == tcell.KeyRight || ev.Rune() == 'd' {
@@ -191,7 +199,7 @@ func handleProfileInput(g *Game, entities []*Entity, oColor, oChar *Object, char
 					entities[i].SetChar(PlayerRunes[char.GetSelected()])
 				}
 				color.ChangeSelected()
-				oChar.x += 2
+				oChar.MoveCurPos(2, 0)
 				return ItemNone, rotation, cColors
 			}
 		} else if ev.Key() == tcell.KeyUp || ev.Rune() == 'w' {
@@ -199,34 +207,34 @@ func handleProfileInput(g *Game, entities []*Entity, oColor, oChar *Object, char
 
 				color.SetSelectOnly(cs - 1)
 				if fgMode {
-					style = StringToStyle(color.items[cs-1].str, cColors[1])
+					sty = style.StringToStyle(color.items[cs-1].str, cColors[1])
 					cColors[0] = color.items[cs-1].str
 				} else {
-					style = StringToStyle(cColors[0], color.items[cs-1].str)
+					sty = style.StringToStyle(cColors[0], color.items[cs-1].str)
 					cColors[1] = color.items[cs-1].str
 				}
 				for i := range entities {
-					entities[i].SetStyle(style)
+					entities[i].SetStyle(sty)
 				}
 				color.ChangeSelected()
-				oColor.y--
+				oColor.MoveCurPos(0, -1)
 				return ItemNone, rotation, cColors
 			}
 		} else if ev.Key() == tcell.KeyDown || ev.Rune() == 's' {
 			if cs < (len(color.items) - 1) {
 				color.SetSelectOnly(cs + 1)
 				if fgMode {
-					style = StringToStyle(color.items[cs+1].str, cColors[1])
+					sty = style.StringToStyle(color.items[cs+1].str, cColors[1])
 					cColors[0] = color.items[cs+1].str
 				} else {
-					style = StringToStyle(cColors[0], color.items[cs+1].str)
+					sty = style.StringToStyle(cColors[0], color.items[cs+1].str)
 					cColors[1] = color.items[cs+1].str
 				}
 				for i := range entities {
-					entities[i].SetStyle(style)
+					entities[i].SetStyle(sty)
 				}
 				char.ChangeSelected()
-				oColor.y++
+				oColor.MoveCurPos(0, 1)
 				return ItemNone, rotation, cColors
 			}
 		} else if ev.Rune() == 'r' {
